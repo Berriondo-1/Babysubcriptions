@@ -33,9 +33,4 @@ Permite guardar localmente:
 - `path`
 - `intl`
 
-## Ejecucion
 
-```bash
-flutter pub get
-flutter run
-```
