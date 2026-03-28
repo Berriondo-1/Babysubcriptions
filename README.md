@@ -1,12 +1,12 @@
 # 🍼 BabySubscription
 
-## 📌 Descripción
+##  Descripción
 
 BabySubscription es una aplicación móvil desarrollada en Flutter que tiene como objetivo ayudar a los usuarios a gestionar el consumo de pañales de un bebé y controlar su inventario.
 
 Este repositorio corresponde al primer avance del proyecto, donde se implementa la base de la aplicación, incluyendo estructura inicial, navegación y persistencia local de datos.
 
-## 🎯 Objetivo del avance
+##  Objetivo del avance
 
 En esta primera entrega se busca:
 
@@ -22,7 +22,7 @@ Provider (gestión de estado)
 SQLite (sqflite)
 
 ## 📱 Funcionalidades implementadas
-### 👶 Registro del bebé
+###  Registro del bebé
 Formulario para ingresar:
 Nombre
 Fecha de nacimiento
@@ -39,7 +39,7 @@ Stock mínimo
 Almacenamiento en base de datos local
 Listado de productos registrados
 
-### 🏠 Pantalla principal (Home)
+###  Pantalla principal (Home)
 Navegación hacia:
 Registro del bebé
 Inventario
@@ -58,12 +58,12 @@ lib/
 
 └── main.dart
 
-## 🧠 Estado actual del proyecto
+##  Estado actual del proyecto
 
 Este proyecto se encuentra en una fase inicial.
 Se ha priorizado la base funcional antes de implementar características más complejas.
 
-## 🚧 Funcionalidades pendientes
+## Funcionalidades pendientes
 
 Las siguientes funcionalidades serán desarrolladas en próximas entregas:
 
