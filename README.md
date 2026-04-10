@@ -44,6 +44,12 @@ Navegación hacia:
 Registro del bebé
 Inventario
 
+## 🌿 Ramas del proyecto
+
+- `master`: rama principal
+- `qa`: rama de desarrollo
+- `staging`: rama de pruebas
+
 ## 🗂️ Estructura del proyecto
 lib/
 ├── models/
