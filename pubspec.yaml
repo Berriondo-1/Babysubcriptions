@@ -1,7 +1,7 @@
 name: baby_subscription
-description: Primera entrega de BabySubscription.
+description: BabySubscription - App de suscripción de pañales con alertas de stock bajo.
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
   sdk: ^3.11.0
@@ -14,6 +14,10 @@ dependencies:
   sqflite: ^2.4.2
   path: ^1.9.1
   intl: ^0.20.2
+  shared_preferences: ^2.5.3
+  crypto: ^3.0.6
+  font_awesome_flutter: ^10.8.0
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

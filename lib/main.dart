@@ -1,10 +1,23 @@
+import 'package:baby_subscription/providers/auth_provider.dart';
 import 'package:baby_subscription/providers/baby_provider.dart';
-import 'package:baby_subscription/screens/baby_registration_screen.dart';
+import 'package:baby_subscription/providers/subscription_provider.dart';
+import 'package:baby_subscription/screens/baby_list_screen.dart';
+import 'package:baby_subscription/screens/welcome_screen.dart';
+import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const BabySubscriptionApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BabyProvider()),
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+      ],
+      child: const BabySubscriptionApp(),
+    ),
+  );
 }
 
 class BabySubscriptionApp extends StatelessWidget {
@@ -12,50 +25,47 @@ class BabySubscriptionApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BabyProvider(),
-      child: MaterialApp(
-        title: 'BabySubscription',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF4F7CAC),
-            brightness: Brightness.light,
-          ),
-          scaffoldBackgroundColor: const Color(0xFFF7F8FC),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: false,
-            backgroundColor: Colors.transparent,
-            foregroundColor: Color(0xFF223046),
-            elevation: 0,
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Color(0xFF4F7CAC)),
-            ),
-          ),
-          cardTheme: CardThemeData(
-            color: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-        ),
-        home: const BabyRegistrationScreen(),
-      ),
+    return MaterialApp(
+      title: 'BabySubscription',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: const _AppRouter(),
     );
+  }
+}
+
+class _AppRouter extends StatefulWidget {
+  const _AppRouter();
+
+  @override
+  State<_AppRouter> createState() => _AppRouterState();
+}
+
+class _AppRouterState extends State<_AppRouter> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authProv = context.read<AuthProvider>();
+      await authProv.checkSession();
+      if (authProv.status == AuthStatus.authenticated && mounted) {
+        await context.read<BabyProvider>().loadProfiles(authProv.currentUser!.id!);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = context.watch<AuthProvider>().status;
+    if (status == AuthStatus.unknown) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+    if (status == AuthStatus.authenticated) {
+      return const BabyListScreen();
+    }
+    return const WelcomeScreen();
   }
 }
