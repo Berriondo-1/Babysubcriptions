@@ -51,7 +51,7 @@ class SocialLoginRow extends StatelessWidget {
 }
 
 class _SocialBtn extends StatelessWidget {
-  final IconData icon;
+  final FaIconData icon;
   final Color color;
   final VoidCallback onTap;
 
