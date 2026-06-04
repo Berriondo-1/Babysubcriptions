@@ -6,8 +6,15 @@ import 'package:baby_subscription/screens/welcome_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:baby_subscription/firebase_options.dart';
 
-void main() {
+
+void main() async {
+   WidgetsFlutterBinding.ensureInitialized();          
+  await Firebase.initializeApp(                        
+    options: DefaultFirebaseOptions.currentPlatform,  
+  );       
   runApp(
     MultiProvider(
       providers: [

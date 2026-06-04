@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:baby_subscription/models/app_user.dart';
 import 'package:baby_subscription/services/database_service.dart';
 import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthException implements Exception {
@@ -15,6 +17,9 @@ class AuthService {
   AuthService._internal();
   static final AuthService instance = AuthService._internal();
 
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   static const String _sessionKey = 'logged_in_user_id';
 
   String _hashPassword(String password) {
@@ -22,12 +27,15 @@ class AuthService {
     return sha256.convert(bytes).toString();
   }
 
+  // ─── Email/Contraseña (sin cambios) ───────────────────────────────────────
+
   Future<AppUser> registerWithEmail({
     required String email,
     required String password,
     String? displayName,
   }) async {
-    final existing = await DatabaseService.instance.getUserByEmail(email.trim().toLowerCase());
+    final existing = await DatabaseService.instance
+        .getUserByEmail(email.trim().toLowerCase());
     if (existing != null) {
       throw const AuthException('Ya existe una cuenta con este correo.');
     }
@@ -47,7 +55,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final user = await DatabaseService.instance.getUserByEmail(email.trim().toLowerCase());
+    final user = await DatabaseService.instance
+        .getUserByEmail(email.trim().toLowerCase());
     if (user == null || user.provider != AppAuthProvider.email) {
       throw const AuthException('Correo o contraseña incorrectos.');
     }
@@ -58,12 +67,61 @@ class AuthService {
     return user;
   }
 
-  Future<AppUser> loginWithSocialProvider({
-    required AppAuthProvider provider,
+  // ─── Google Sign-In ────────────────────────────────────────────────────────
+
+  Future<AppUser> loginWithGoogle() async {
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        throw const AuthException('Inicio de sesión cancelado.');
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final result = await _firebaseAuth.signInWithCredential(credential);
+      final firebaseUser = result.user!;
+
+      return await _upsertSocialUser(
+        email: firebaseUser.email!,
+        displayName: firebaseUser.displayName,
+        provider: AppAuthProvider.google,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseError(e.code));
+    }
+  }
+
+  // ─── GitHub Sign-In ────────────────────────────────────────────────────────
+
+  Future<AppUser> loginWithGitHub(context) async {
+    try {
+      final provider = GithubAuthProvider();
+      // En Android/iOS usa signInWithProvider (requiere firebase_auth >= 4)
+      final result = await _firebaseAuth.signInWithProvider(provider);
+      final firebaseUser = result.user!;
+
+      return await _upsertSocialUser(
+        email: firebaseUser.email ?? '${firebaseUser.uid}@github.com',
+        displayName: firebaseUser.displayName,
+        provider: AppAuthProvider.github,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapFirebaseError(e.code));
+    }
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  /// Crea el usuario local si no existe, o lo devuelve si ya existe
+  Future<AppUser> _upsertSocialUser({
     required String email,
-    String? displayName,
+    required String? displayName,
+    required AppAuthProvider provider,
   }) async {
-    var user = await DatabaseService.instance.getUserByEmail(email.trim().toLowerCase());
+    var user = await DatabaseService.instance
+        .getUserByEmail(email.trim().toLowerCase());
     if (user == null) {
       user = AppUser(
         email: email.trim().toLowerCase(),
@@ -77,7 +135,25 @@ class AuthService {
     return user;
   }
 
+  String _mapFirebaseError(String code) {
+    switch (code) {
+      case 'account-exists-with-different-credential':
+        return 'Ya existe una cuenta con este correo usando otro método.';
+      case 'invalid-credential':
+        return 'Credenciales inválidas. Intenta de nuevo.';
+      case 'user-disabled':
+        return 'Esta cuenta ha sido deshabilitada.';
+      case 'cancelled-popup-request':
+      case 'popup-closed-by-user':
+        return 'Inicio de sesión cancelado.';
+      default:
+        return 'Error de autenticación. Intenta de nuevo.';
+    }
+  }
+
   Future<void> logout() async {
+    await _firebaseAuth.signOut();
+    await _googleSignIn.signOut();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionKey);
   }
@@ -87,7 +163,8 @@ class AuthService {
     final userId = prefs.getInt(_sessionKey);
     if (userId == null) return null;
     final db = await DatabaseService.instance.database;
-    final users = await db.query('users', where: 'id = ?', whereArgs: [userId], limit: 1);
+    final users = await db.query('users',
+        where: 'id = ?', whereArgs: [userId], limit: 1);
     if (users.isEmpty) return null;
     return AppUser.fromMap(users.first);
   }
