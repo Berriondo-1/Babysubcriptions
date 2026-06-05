@@ -1,5 +1,6 @@
 import 'package:baby_subscription/models/app_user.dart';
 import 'package:baby_subscription/models/baby_profile.dart';
+import 'package:baby_subscription/models/diaper_consumption.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -20,7 +21,7 @@ class DatabaseService {
     final path = join(databasesPath, 'baby_subscription_v2.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -57,6 +58,15 @@ class DatabaseService {
             FOREIGN KEY(baby_profile_id) REFERENCES baby_profiles(id) ON DELETE CASCADE
           )
         ''');
+        await db.execute('''
+          CREATE TABLE diaper_consumption(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            baby_profile_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            diaper_count INTEGER NOT NULL,
+            FOREIGN KEY(baby_profile_id) REFERENCES baby_profiles(id) ON DELETE CASCADE
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -75,11 +85,25 @@ class DatabaseService {
             )
           ''');
         }
+        if (oldVersion < 3) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS diaper_consumption(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              baby_profile_id INTEGER NOT NULL,
+              date TEXT NOT NULL,
+              diaper_count INTEGER NOT NULL,
+              FOREIGN KEY(baby_profile_id) REFERENCES baby_profiles(id) ON DELETE CASCADE
+            )
+          ''');
+        }
       },
     );
   }
 
-  Future<Subscription?> getActiveSubscription(int userId, int babyProfileId) async {
+  Future<Subscription?> getActiveSubscription(
+    int userId,
+    int babyProfileId,
+  ) async {
     final db = await database;
     final result = await db.query(
       'subscriptions',
@@ -96,7 +120,12 @@ class DatabaseService {
     final db = await database;
     final map = sub.toMap()..remove('id');
     if (sub.id != null) {
-      await db.update('subscriptions', map, where: 'id = ?', whereArgs: [sub.id]);
+      await db.update(
+        'subscriptions',
+        map,
+        where: 'id = ?',
+        whereArgs: [sub.id],
+      );
       return sub;
     } else {
       final id = await db.insert('subscriptions', map);
@@ -116,7 +145,12 @@ class DatabaseService {
 
   Future<AppUser?> getUserByEmail(String email) async {
     final db = await database;
-    final result = await db.query('users', where: 'email = ?', whereArgs: [email], limit: 1);
+    final result = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+      limit: 1,
+    );
     if (result.isEmpty) return null;
     return AppUser.fromMap(result.first);
   }
@@ -144,9 +178,13 @@ class DatabaseService {
     final map = profile.toMap();
     map['user_id'] = userId;
     map.remove('id');
-
     if (profile.id != null) {
-      await db.update('baby_profiles', map, where: 'id = ?', whereArgs: [profile.id]);
+      await db.update(
+        'baby_profiles',
+        map,
+        where: 'id = ?',
+        whereArgs: [profile.id],
+      );
       return profile;
     } else {
       final id = await db.insert('baby_profiles', map);
@@ -157,5 +195,36 @@ class DatabaseService {
   Future<void> deleteBabyProfile(int profileId) async {
     final db = await database;
     await db.delete('baby_profiles', where: 'id = ?', whereArgs: [profileId]);
+  }
+
+  Future<List<DiaperConsumption>> getConsumptionHistory(
+    int babyProfileId,
+  ) async {
+    final db = await database;
+    final result = await db.query(
+      'diaper_consumption',
+      where: 'baby_profile_id = ?',
+      whereArgs: [babyProfileId],
+      orderBy: 'date DESC',
+      limit: 90,
+    );
+    return result.map(DiaperConsumption.fromMap).toList();
+  }
+
+  Future<DiaperConsumption> saveConsumption(DiaperConsumption entry) async {
+    final db = await database;
+    final map = entry.toMap()..remove('id');
+    if (entry.id != null) {
+      await db.update(
+        'diaper_consumption',
+        map,
+        where: 'id = ?',
+        whereArgs: [entry.id],
+      );
+      return entry;
+    } else {
+      final id = await db.insert('diaper_consumption', map);
+      return entry.copyWith(id: id);
+    }
   }
 }

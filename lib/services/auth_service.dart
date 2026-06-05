@@ -34,8 +34,9 @@ class AuthService {
     required String password,
     String? displayName,
   }) async {
-    final existing = await DatabaseService.instance
-        .getUserByEmail(email.trim().toLowerCase());
+    final existing = await DatabaseService.instance.getUserByEmail(
+      email.trim().toLowerCase(),
+    );
     if (existing != null) {
       throw const AuthException('Ya existe una cuenta con este correo.');
     }
@@ -55,8 +56,9 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final user = await DatabaseService.instance
-        .getUserByEmail(email.trim().toLowerCase());
+    final user = await DatabaseService.instance.getUserByEmail(
+      email.trim().toLowerCase(),
+    );
     if (user == null || user.provider != AppAuthProvider.email) {
       throw const AuthException('Correo o contraseña incorrectos.');
     }
@@ -120,8 +122,9 @@ class AuthService {
     required String? displayName,
     required AppAuthProvider provider,
   }) async {
-    var user = await DatabaseService.instance
-        .getUserByEmail(email.trim().toLowerCase());
+    var user = await DatabaseService.instance.getUserByEmail(
+      email.trim().toLowerCase(),
+    );
     if (user == null) {
       user = AppUser(
         email: email.trim().toLowerCase(),
@@ -163,8 +166,12 @@ class AuthService {
     final userId = prefs.getInt(_sessionKey);
     if (userId == null) return null;
     final db = await DatabaseService.instance.database;
-    final users = await db.query('users',
-        where: 'id = ?', whereArgs: [userId], limit: 1);
+    final users = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [userId],
+      limit: 1,
+    );
     if (users.isEmpty) return null;
     return AppUser.fromMap(users.first);
   }

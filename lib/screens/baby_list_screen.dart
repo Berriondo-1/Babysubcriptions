@@ -3,6 +3,8 @@ import 'package:baby_subscription/providers/auth_provider.dart';
 import 'package:baby_subscription/providers/baby_provider.dart';
 import 'package:baby_subscription/screens/baby_form_screen.dart';
 import 'package:baby_subscription/screens/catalog_screen.dart';
+import 'package:baby_subscription/providers/consumption_provider.dart';
+import 'package:baby_subscription/screens/consumption_screen.dart';
 import 'package:baby_subscription/screens/subscription_screen.dart';
 import 'package:baby_subscription/screens/welcome_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
@@ -43,9 +45,7 @@ class _BabyListScreenState extends State<BabyListScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(80, 38),
-            ),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 38)),
             child: const Text('Salir'),
           ),
         ],
@@ -107,7 +107,9 @@ class _BabyListScreenState extends State<BabyListScreen> {
                 gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
               ),
-              child: const Center(child: Text('🍼', style: TextStyle(fontSize: 18))),
+              child: const Center(
+                child: Text('🍼', style: TextStyle(fontSize: 18)),
+              ),
             ),
             const SizedBox(width: 10),
             const Text('BabySubscription'),
@@ -117,13 +119,15 @@ class _BabyListScreenState extends State<BabyListScreen> {
           IconButton(
             icon: const Icon(Icons.storefront_outlined),
             tooltip: 'Catálogo',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CatalogScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CatalogScreen())),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.person_outline_rounded),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             itemBuilder: (ctx) => [
               PopupMenuItem(
                 enabled: false,
@@ -146,7 +150,11 @@ class _BabyListScreenState extends State<BabyListScreen> {
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+                    Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.error,
+                      size: 20,
+                    ),
                     SizedBox(width: 10),
                     Text('Cerrar sesión'),
                   ],
@@ -161,7 +169,9 @@ class _BabyListScreenState extends State<BabyListScreen> {
         ],
       ),
       body: babyProv.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
@@ -205,7 +215,10 @@ class _BabyListScreenState extends State<BabyListScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
-                                child: Text('👶', style: TextStyle(fontSize: 48)),
+                                child: Text(
+                                  '👶',
+                                  style: TextStyle(fontSize: 48),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -237,13 +250,27 @@ class _BabyListScreenState extends State<BabyListScreen> {
                               MaterialPageRoute(
                                 builder: (_) => ChangeNotifierProvider(
                                   create: (_) => SubscriptionProvider(),
-                                  child: SubscriptionScreen(babyProfile: profiles[i]),
+                                  child: SubscriptionScreen(
+                                    babyProfile: profiles[i],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            onConsumption: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider(
+                                  create: (_) => ConsumptionProvider(),
+                                  child: ConsumptionScreen(
+                                    babyProfile: profiles[i],
+                                  ),
                                 ),
                               ),
                             ),
                             onEdit: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => BabyFormScreen(existingProfile: profiles[i]),
+                                builder: (_) => BabyFormScreen(
+                                  existingProfile: profiles[i],
+                                ),
                               ),
                             ),
                             onDelete: () => _deleteProfile(profiles[i]),
@@ -258,9 +285,9 @@ class _BabyListScreenState extends State<BabyListScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const BabyFormScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const BabyFormScreen())),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
@@ -276,12 +303,14 @@ class _BabyProfileCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSubscription;
+  final VoidCallback onConsumption;
 
   const _BabyProfileCard({
     required this.profile,
     required this.onEdit,
     required this.onDelete,
     required this.onSubscription,
+    required this.onConsumption,
   });
 
   @override
@@ -367,6 +396,12 @@ class _BabyProfileCard extends StatelessWidget {
                   icon: const Icon(Icons.subscriptions_outlined, size: 20),
                   color: AppColors.primary,
                   tooltip: 'Suscripción',
+                ),
+                IconButton(
+                  onPressed: onConsumption,
+                  icon: const Icon(Icons.bar_chart_rounded, size: 20),
+                  color: AppColors.primary,
+                  tooltip: 'Registro de consumo',
                 ),
                 IconButton(
                   onPressed: onEdit,

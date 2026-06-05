@@ -1,5 +1,6 @@
 import 'package:baby_subscription/providers/auth_provider.dart';
 import 'package:baby_subscription/providers/baby_provider.dart';
+import 'package:baby_subscription/providers/consumption_provider.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:baby_subscription/screens/baby_list_screen.dart';
 import 'package:baby_subscription/screens/welcome_screen.dart';
@@ -9,18 +10,16 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:baby_subscription/firebase_options.dart';
 
-
 void main() async {
-   WidgetsFlutterBinding.ensureInitialized();          
-  await Firebase.initializeApp(                        
-    options: DefaultFirebaseOptions.currentPlatform,  
-  );       
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BabyProvider()),
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+        ChangeNotifierProvider(create: (_) => ConsumptionProvider()),
       ],
       child: const BabySubscriptionApp(),
     ),
@@ -56,7 +55,9 @@ class _AppRouterState extends State<_AppRouter> {
       final authProv = context.read<AuthProvider>();
       await authProv.checkSession();
       if (authProv.status == AuthStatus.authenticated && mounted) {
-        await context.read<BabyProvider>().loadProfiles(authProv.currentUser!.id!);
+        await context.read<BabyProvider>().loadProfiles(
+          authProv.currentUser!.id!,
+        );
       }
     });
   }
@@ -67,7 +68,9 @@ class _AppRouterState extends State<_AppRouter> {
     if (status == AuthStatus.unknown) {
       return const Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       );
     }
     if (status == AuthStatus.authenticated) {
