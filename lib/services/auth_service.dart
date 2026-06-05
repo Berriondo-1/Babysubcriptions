@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:baby_subscription/models/app_user.dart';
 import 'package:baby_subscription/services/database_service.dart';
+import 'package:baby_subscription/services/firestore_service.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -27,7 +28,7 @@ class AuthService {
     return sha256.convert(bytes).toString();
   }
 
-  // ─── Email/Contraseña (sin cambios) ───────────────────────────────────────
+  // ─── Email/Contraseña ─────────────────────────────────────────────────────
 
   Future<AppUser> registerWithEmail({
     required String email,
@@ -49,6 +50,14 @@ class AuthService {
     );
     final created = await DatabaseService.instance.createUser(user);
     await _persistSession(created.id!);
+
+    // Sincronizar con Firestore
+    await FirestoreService.instance.saveUser(
+      email: created.email,
+      displayName: created.displayName,
+      provider: 'email',
+    );
+
     return created;
   }
 
@@ -100,7 +109,6 @@ class AuthService {
   Future<AppUser> loginWithGitHub(context) async {
     try {
       final provider = GithubAuthProvider();
-      // En Android/iOS usa signInWithProvider (requiere firebase_auth >= 4)
       final result = await _firebaseAuth.signInWithProvider(provider);
       final firebaseUser = result.user!;
 
@@ -116,7 +124,6 @@ class AuthService {
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  /// Crea el usuario local si no existe, o lo devuelve si ya existe
   Future<AppUser> _upsertSocialUser({
     required String email,
     required String? displayName,
@@ -135,6 +142,14 @@ class AuthService {
       user = await DatabaseService.instance.createUser(user);
     }
     await _persistSession(user.id!);
+
+    // Sincronizar con Firestore
+    await FirestoreService.instance.saveUser(
+      email: user.email,
+      displayName: user.displayName,
+      provider: provider.name,
+    );
+
     return user;
   }
 

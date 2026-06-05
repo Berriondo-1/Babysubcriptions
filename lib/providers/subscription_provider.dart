@@ -1,5 +1,6 @@
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/services/database_service.dart';
+import 'package:baby_subscription/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 
 class SubscriptionProvider extends ChangeNotifier {
@@ -28,7 +29,12 @@ class SubscriptionProvider extends ChangeNotifier {
   Future<bool> saveSubscription(Subscription sub) async {
     _setLoading(true);
     try {
+      // 1. Guardar en SQLite (local)
       _current = await DatabaseService.instance.saveSubscription(sub);
+      
+      // 2. Sincronizar con Firestore (nube)
+      await FirestoreService.instance.saveSubscription(_current!);
+      
       _errorMessage = null;
       return true;
     } catch (e) {
@@ -43,7 +49,12 @@ class SubscriptionProvider extends ChangeNotifier {
     if (_current?.id == null) return false;
     _setLoading(true);
     try {
+      // 1. Cancelar en SQLite (local)
       await DatabaseService.instance.cancelSubscription(_current!.id!);
+      
+      // 2. Cancelar en Firestore (nube)
+      await FirestoreService.instance.cancelSubscription(_current!.babyProfileId);
+      
       _current = _current!.copyWith(isActive: false);
       _errorMessage = null;
       return true;
