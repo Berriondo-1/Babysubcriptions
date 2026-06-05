@@ -2,6 +2,7 @@ import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/auth_provider.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
+import 'package:baby_subscription/screens/payment_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +22,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   DeliveryFrequency _selectedFrequency = DeliveryFrequency.monthly;
 
   double get _estimatedCost =>
-      _selectedType.pricePerUnit * _quantity * _selectedFrequency.deliveriesPerMonth;
+      _selectedType.pricePerUnit *
+      _quantity *
+      _selectedFrequency.deliveriesPerMonth;
 
   @override
   void initState() {
@@ -29,9 +32,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = context.read<AuthProvider>().currentUser?.id;
       if (userId != null) {
-        context
-            .read<SubscriptionProvider>()
-            .loadSubscription(userId, widget.babyProfile.id!);
+        context.read<SubscriptionProvider>().loadSubscription(
+          userId,
+          widget.babyProfile.id!,
+        );
       }
     });
     _prefillFromBabyProfile();
@@ -39,12 +43,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   void _prefillFromBabyProfile() {
     final w = widget.babyProfile.weightKg;
-    if (w < 3)        _selectedType = DiaperType.newborn;
-    else if (w < 5)   _selectedType = DiaperType.size1;
-    else if (w < 8)   _selectedType = DiaperType.size2;
-    else if (w < 11)  _selectedType = DiaperType.size3;
-    else if (w < 14)  _selectedType = DiaperType.size4;
-    else              _selectedType = DiaperType.size5;
+    if (w < 3)
+      _selectedType = DiaperType.newborn;
+    else if (w < 5)
+      _selectedType = DiaperType.size1;
+    else if (w < 8)
+      _selectedType = DiaperType.size2;
+    else if (w < 11)
+      _selectedType = DiaperType.size3;
+    else if (w < 14)
+      _selectedType = DiaperType.size4;
+    else
+      _selectedType = DiaperType.size5;
   }
 
   Future<void> _save() async {
@@ -67,22 +77,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (!mounted) return;
 
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('¡Suscripción guardada! Procede al pago para activarla.'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      final savedSub = subProv.current!;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PaymentScreen(
+            babyProfile: widget.babyProfile,
+            subscription: savedSub,
+          ),
         ),
       );
-      // TODO HU-04: navegar a pantalla de pago
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(subProv.errorMessage ?? 'Error al guardar.'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -109,7 +121,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 24),
 
               // Diaper type
-              _SectionTitle(title: 'Tipo de pañal', icon: Icons.baby_changing_station_rounded),
+              _SectionTitle(
+                title: 'Tipo de pañal',
+                icon: Icons.baby_changing_station_rounded,
+              ),
               const SizedBox(height: 12),
               _DiaperTypeSelector(
                 selected: _selectedType,
@@ -118,7 +133,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 24),
 
               // Quantity
-              _SectionTitle(title: 'Cantidad por pedido', icon: Icons.inventory_2_outlined),
+              _SectionTitle(
+                title: 'Cantidad por pedido',
+                icon: Icons.inventory_2_outlined,
+              ),
               const SizedBox(height: 12),
               _QuantitySlider(
                 value: _quantity,
@@ -127,7 +145,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 24),
 
               // Frequency
-              _SectionTitle(title: 'Frecuencia de entrega', icon: Icons.calendar_month_outlined),
+              _SectionTitle(
+                title: 'Frecuencia de entrega',
+                icon: Icons.calendar_month_outlined,
+              ),
               const SizedBox(height: 12),
               _FrequencySelector(
                 selected: _selectedFrequency,
@@ -146,7 +167,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
                       )
                     : const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -242,9 +266,9 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textPrimary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: AppColors.textPrimary),
         ),
       ],
     );
@@ -327,13 +351,15 @@ class _QuantitySlider extends StatelessWidget {
             children: [
               Text(
                 'Unidades',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppColors.textSecondary),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight,
                   borderRadius: BorderRadius.circular(10),
@@ -448,7 +474,11 @@ class _CostCard extends StatelessWidget {
               gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.attach_money_rounded, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.attach_money_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -457,17 +487,17 @@ class _CostCard extends StatelessWidget {
               children: [
                 Text(
                   'Costo estimado mensual',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primary,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.primary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '\$${cost.toStringAsFixed(2)}',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: AppColors.primaryDark,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
