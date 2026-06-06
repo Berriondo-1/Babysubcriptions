@@ -1,4 +1,5 @@
 import 'package:baby_subscription/models/subscription.dart';
+import 'package:baby_subscription/providers/stock_provider.dart';
 import 'package:baby_subscription/services/database_service.dart';
 import 'package:baby_subscription/services/firestore_service.dart';
 import 'package:flutter/material.dart';
@@ -26,15 +27,24 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> saveSubscription(Subscription sub) async {
+  Future<bool> saveSubscription(
+    Subscription sub,
+    StockProvider stockProvider, // ← nuevo parámetro
+  ) async {
     _setLoading(true);
     try {
-      // 1. Guardar en SQLite (local)
+      final isNew = sub.id == null; // es nueva si no tiene id
       _current = await DatabaseService.instance.saveSubscription(sub);
-      
-      // 2. Sincronizar con Firestore (nube)
       await FirestoreService.instance.saveSubscription(_current!);
-      
+
+      // Si es una suscripción nueva, inicializar el stock
+      if (isNew) {
+        await stockProvider.replenishStock(
+          _current!.quantityPerOrder,
+          _current!.babyProfileId,
+        );
+      }
+
       _errorMessage = null;
       return true;
     } catch (e) {
@@ -45,16 +55,16 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> cancelSubscription() async {
+  Future<bool> cancelSubscription(StockProvider stockProvider) async {
     if (_current?.id == null) return false;
     _setLoading(true);
     try {
-      // 1. Cancelar en SQLite (local)
       await DatabaseService.instance.cancelSubscription(_current!.id!);
-      
-      // 2. Cancelar en Firestore (nube)
       await FirestoreService.instance.cancelSubscription(_current!.babyProfileId);
-      
+
+      // Resetear el stock al cancelar
+      await stockProvider.resetStock(_current!.babyProfileId);
+
       _current = _current!.copyWith(isActive: false);
       _errorMessage = null;
       return true;

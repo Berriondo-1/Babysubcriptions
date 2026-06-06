@@ -6,6 +6,7 @@ import 'package:baby_subscription/screens/baby_form_screen.dart';
 import 'package:baby_subscription/screens/catalog_screen.dart';
 import 'package:baby_subscription/providers/consumption_provider.dart';
 import 'package:baby_subscription/screens/consumption_screen.dart';
+import 'package:baby_subscription/screens/stock_screen.dart';
 import 'package:baby_subscription/screens/subscription_screen.dart';
 import 'package:baby_subscription/screens/welcome_screen.dart';
 import 'package:baby_subscription/services/admin_service.dart';
@@ -369,6 +370,16 @@ class _BabyListScreenState extends State<BabyListScreen> {
                                 ),
                               ),
                             ),
+                            onStock: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider(
+                                  create: (_) => SubscriptionProvider(),
+                                  child: StockScreen(
+                                    babyProfile: profiles[i],
+                                  ),
+                                ),
+                              ),
+                            ),
                             onEdit: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => BabyFormScreen(
@@ -409,6 +420,7 @@ class _BabyProfileCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onSubscription;
   final VoidCallback onConsumption;
+  final VoidCallback onStock; // ← nuevo
 
   const _BabyProfileCard({
     required this.profile,
@@ -416,6 +428,7 @@ class _BabyProfileCard extends StatelessWidget {
     required this.onDelete,
     required this.onSubscription,
     required this.onConsumption,
+    required this.onStock, // ← nuevo
   });
 
   @override
@@ -499,7 +512,13 @@ class _BabyProfileCard extends StatelessWidget {
                   onPressed: onConsumption,
                   icon: const Icon(Icons.bar_chart_rounded, size: 20),
                   color: AppColors.primary,
-                  tooltip: 'Registro de consumo',
+                  tooltip: 'Consumo',
+                ),
+                IconButton(
+                  onPressed: onStock, // ← nuevo
+                  icon: const Icon(Icons.inventory_2_outlined, size: 20),
+                  color: AppColors.primary,
+                  tooltip: 'Stock',
                 ),
                 IconButton(
                   onPressed: onEdit,
@@ -549,8 +568,7 @@ class _InfoChip extends StatelessWidget {
           Icon(
             icon,
             size: 13,
-            color:
-                highlighted ? AppColors.primary : AppColors.textSecondary,
+            color: highlighted ? AppColors.primary : AppColors.textSecondary,
           ),
           const SizedBox(width: 4),
           Text(

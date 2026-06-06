@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class StockProvider extends ChangeNotifier {
   int _currentStock = 0;
-  int _alertThreshold = 10; // umbral por defecto
+  int _alertThreshold = 10;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -13,15 +13,31 @@ class StockProvider extends ChangeNotifier {
   int get alertThreshold => _alertThreshold;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  bool get isStockLow => _currentStock <= _alertThreshold;
+  bool get isStockLow => _currentStock <= _alertThreshold && _currentStock >= 0;
 
   static const _thresholdKey = 'stock_alert_threshold';
+  // Clave con babyProfileId para tener stock separado por bebé
+  static String _stockKey(int babyProfileId) => 'stock_current_$babyProfileId';
 
-  /// Cargar umbral guardado en preferencias
-  Future<void> loadThreshold() async {
+  /// Cargar stock y umbral guardados para un bebé específico
+  Future<void> loadStock(int babyProfileId) async {
     final prefs = await SharedPreferences.getInstance();
     _alertThreshold = prefs.getInt(_thresholdKey) ?? 10;
+    _currentStock = prefs.getInt(_stockKey(babyProfileId)) ?? 0;
     notifyListeners();
+  }
+
+  /// Inicializar stock con la cantidad de una suscripción (solo si es 0)
+  Future<void> initStockFromSubscription(
+      Subscription sub, int babyProfileId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getInt(_stockKey(babyProfileId));
+    // Solo inicializa si nunca se ha guardado un stock para este bebé
+    if (saved == null) {
+      _currentStock = sub.quantityPerOrder;
+      await prefs.setInt(_stockKey(babyProfileId), _currentStock);
+      notifyListeners();
+    }
   }
 
   /// Guardar umbral configurado por el usuario
@@ -30,26 +46,18 @@ class StockProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_thresholdKey, value);
     notifyListeners();
-    // Revisar si ya hay stock bajo con el nuevo umbral
     await checkStockAlert(babyName: '');
   }
 
-  /// Calcular stock estimado según la suscripción y días transcurridos
-  void calculateStock(Subscription sub, DateTime lastDelivery) {
-    final daysSince = DateTime.now().difference(lastDelivery).inDays;
-    final delivered = sub.quantityPerOrder;
-    final usedEstimate = daysSince * (sub.quantityPerOrder /
-        (30 / sub.frequency.deliveriesPerMonth));
-    _currentStock = (delivered - usedEstimate).round().clamp(0, delivered);
-    notifyListeners();
-  }
-
-  /// Registrar consumo manual y verificar alerta
+  /// Registrar consumo manual y descontar del stock
   Future<void> registerUsage({
     required int diapersUsed,
     required String babyName,
+    required int babyProfileId,
   }) async {
     _currentStock = (_currentStock - diapersUsed).clamp(0, 99999);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_stockKey(babyProfileId), _currentStock);
     notifyListeners();
     await checkStockAlert(babyName: babyName);
   }
@@ -66,10 +74,20 @@ class StockProvider extends ChangeNotifier {
     }
   }
 
-  /// Reponer stock después de una entrega
-  void replenishStock(int quantity) {
+  /// Reponer stock después de una nueva suscripción/entrega
+  Future<void> replenishStock(int quantity, int babyProfileId) async {
     _currentStock += quantity;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_stockKey(babyProfileId), _currentStock);
     notifyListeners();
     NotificationService.instance.cancelStockAlert();
+  }
+
+  /// Reiniciar stock (cuando se cancela suscripción)
+  Future<void> resetStock(int babyProfileId) async {
+    _currentStock = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_stockKey(babyProfileId));
+    notifyListeners();
   }
 }

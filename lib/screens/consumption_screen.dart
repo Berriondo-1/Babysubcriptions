@@ -6,6 +6,7 @@ import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:baby_subscription/providers/stock_provider.dart';
 
 /// Full-page screen for tracking daily diaper usage.
 /// Covers SCRUM-38 (log), SCRUM-39 (averages), SCRUM-40 (suggestion),
@@ -25,17 +26,21 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   final _focusNode = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prov = context.read<ConsumptionProvider>();
-      await prov.loadHistory(widget.babyProfile.id!);
-      final today = prov.todayEntry;
-      if (today != null && mounted) {
-        _controller.text = today.diaperCount.toString();
-      }
-    });
-  }
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final prov = context.read<ConsumptionProvider>();
+    await prov.loadHistory(widget.babyProfile.id!);
+    
+    // Cargar stock del bebé
+    await context.read<StockProvider>().loadStock(widget.babyProfile.id!);
+    
+    final today = prov.todayEntry;
+    if (today != null && mounted) {
+      _controller.text = today.diaperCount.toString();
+    }
+  });
+}
 
   @override
   void dispose() {
@@ -45,36 +50,47 @@ class _ConsumptionScreenState extends State<ConsumptionScreen> {
   }
 
   Future<void> _save() async {
-    final count = int.tryParse(_controller.text.trim());
-    if (count == null || count < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Ingresa un número válido (mínimo 0).'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
-    }
-    _focusNode.unfocus();
-    final ok = await context.read<ConsumptionProvider>().logToday(
-      widget.babyProfile.id!,
-      count,
-    );
-    if (!mounted) return;
+  final count = int.tryParse(_controller.text.trim());
+  if (count == null || count < 0) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? '✓ Registro guardado' : 'Error al guardar'),
-        backgroundColor: ok ? AppColors.success : AppColors.error,
+        content: const Text('Ingresa un número válido (mínimo 0).'),
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
+    return;
   }
+  _focusNode.unfocus();
+
+  // Obtener consumo anterior de hoy para calcular la diferencia
+  final prov = context.read<ConsumptionProvider>();
+  final previousCount = prov.todayEntry?.diaperCount ?? 0;
+  final diff = count - previousCount; // puede ser positivo o negativo
+
+  final ok = await prov.logToday(widget.babyProfile.id!, count);
+
+  if (ok && diff != 0) {
+    // Descontar del stock solo la diferencia respecto al registro anterior
+    await context.read<StockProvider>().registerUsage(
+      diapersUsed: diff,
+      babyName: widget.babyProfile.name,
+      babyProfileId: widget.babyProfile.id!,
+    );
+  }
+
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(ok ? '✓ Registro guardado' : 'Error al guardar'),
+      backgroundColor: ok ? AppColors.success : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

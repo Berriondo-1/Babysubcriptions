@@ -6,6 +6,7 @@ import 'package:baby_subscription/screens/payment_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:baby_subscription/providers/stock_provider.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   final BabyProfile babyProfile;
@@ -58,47 +59,46 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Future<void> _save() async {
-    final authProv = context.read<AuthProvider>();
-    final subProv = context.read<SubscriptionProvider>();
-    final existing = subProv.current;
+  final authProv = context.read<AuthProvider>();
+  final subProv = context.read<SubscriptionProvider>();
+  final stockProv = context.read<StockProvider>(); // ← nuevo
+  final existing = subProv.current;
 
-    final sub = Subscription(
-      id: existing?.id,
-      userId: authProv.currentUser!.id!,
-      babyProfileId: widget.babyProfile.id!,
-      diaperType: _selectedType,
-      quantityPerOrder: _quantity.round(),
-      frequency: _selectedFrequency,
-      isActive: true,
-      createdAt: existing?.createdAt ?? DateTime.now(),
+  final sub = Subscription(
+    id: existing?.id,
+    userId: authProv.currentUser!.id!,
+    babyProfileId: widget.babyProfile.id!,
+    diaperType: _selectedType,
+    quantityPerOrder: _quantity.round(),
+    frequency: _selectedFrequency,
+    isActive: true,
+    createdAt: existing?.createdAt ?? DateTime.now(),
+  );
+
+  final ok = await subProv.saveSubscription(sub, stockProv); // ← pasar stockProv
+  if (!mounted) return;
+
+  if (ok) {
+    final savedSub = subProv.current!;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          babyProfile: widget.babyProfile,
+          subscription: savedSub,
+        ),
+      ),
     );
-
-    final ok = await subProv.saveSubscription(sub);
-    if (!mounted) return;
-
-    if (ok) {
-      final savedSub = subProv.current!;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PaymentScreen(
-            babyProfile: widget.babyProfile,
-            subscription: savedSub,
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(subProv.errorMessage ?? 'Error al guardar.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(subProv.errorMessage ?? 'Error al guardar.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -27,7 +27,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => BabyProvider()),
         ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
         ChangeNotifierProvider(create: (_) => ConsumptionProvider()),
-        ChangeNotifierProvider(create: (_) => StockProvider()..loadThreshold()),
+        ChangeNotifierProvider(create: (_) => StockProvider()),
       ],
       child: const BabySubscriptionApp(),
     ),

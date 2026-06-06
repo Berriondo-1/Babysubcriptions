@@ -5,6 +5,7 @@ import 'package:baby_subscription/screens/payment_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:baby_subscription/providers/stock_provider.dart';
 
 class SubscriptionActiveScreen extends StatefulWidget {
   final BabyProfile babyProfile;
@@ -52,42 +53,39 @@ class _SubscriptionActiveScreenState extends State<SubscriptionActiveScreen>
   }
 
   Future<void> _cancelSubscription() async {
-    final confirm = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _CancelSheet(babyName: widget.babyProfile.name),
+  final confirm = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => _CancelSheet(babyName: widget.babyProfile.name),
+  );
+  if (confirm != true || !mounted) return;
+
+  final subProv = context.read<SubscriptionProvider>();
+  final stockProv = context.read<StockProvider>(); // ← nuevo
+  final ok = await subProv.cancelSubscription(stockProv); // ← pasar stockProv
+  if (!mounted) return;
+
+  if (ok) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Suscripción cancelada exitosamente.'),
+        backgroundColor: AppColors.textSecondary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
-    if (confirm != true || !mounted) return;
-
-    final subProv = context.read<SubscriptionProvider>();
-    final ok = await subProv.cancelSubscription();
-    if (!mounted) return;
-
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Suscripción cancelada exitosamente.'),
-          backgroundColor: AppColors.textSecondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      Navigator.of(context).popUntil((r) => r.isFirst);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(subProv.errorMessage ?? 'Error al cancelar.'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
+    Navigator.of(context).popUntil((r) => r.isFirst);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(subProv.errorMessage ?? 'Error al cancelar.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
