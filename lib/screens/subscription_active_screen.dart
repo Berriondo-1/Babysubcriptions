@@ -11,12 +11,16 @@ class SubscriptionActiveScreen extends StatefulWidget {
   final BabyProfile babyProfile;
   final Subscription subscription;
   final PaymentMethod paymentMethod;
+  final String transactionId;
+  final DateTime paymentDate;
 
   const SubscriptionActiveScreen({
     super.key,
     required this.babyProfile,
     required this.subscription,
     required this.paymentMethod,
+    required this.transactionId,
+    required this.paymentDate,
   });
 
   @override
@@ -159,6 +163,11 @@ class _SubscriptionActiveScreenState extends State<SubscriptionActiveScreen>
                     _PaymentCard(
                       method: widget.paymentMethod,
                       monthlyCost: sub.estimatedMonthlyCost,
+                    ),
+                    const SizedBox(height: 16),
+                    _ReceiptCard(
+                      transactionId: widget.transactionId,
+                      paymentDate: widget.paymentDate,
                     ),
                     const SizedBox(height: 16),
                     _DeliveriesPreview(frequency: sub.frequency),
@@ -434,6 +443,140 @@ class _PaymentCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ReceiptCard extends StatelessWidget {
+  final String transactionId;
+  final DateTime paymentDate;
+  const _ReceiptCard({required this.transactionId, required this.paymentDate});
+
+  String _formatDateTime(DateTime d) {
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${d.day} ${months[d.month - 1]} ${d.year}  ·  $h:$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.receipt_long_rounded,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Recibo de compra',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Aprobado',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(color: AppColors.divider, height: 1),
+          const SizedBox(height: 14),
+          _ReceiptRow(
+            label: 'N° de transacción',
+            value: transactionId,
+            mono: true,
+          ),
+          const SizedBox(height: 8),
+          _ReceiptRow(
+            label: 'Fecha y hora',
+            value: _formatDateTime(paymentDate),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool mono;
+  const _ReceiptRow({
+    required this.label,
+    required this.value,
+    this.mono = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+              fontFamily: mono ? 'monospace' : null,
+              letterSpacing: mono ? 0.5 : null,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

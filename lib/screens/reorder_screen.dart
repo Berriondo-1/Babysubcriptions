@@ -103,8 +103,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   Text(
                     'Umbral de alerta',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -128,8 +128,8 @@ class _ReorderScreenState extends State<ReorderScreen> {
                   Text(
                     'Tu suscripción',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -320,16 +320,16 @@ class _StockCard extends StatelessWidget {
                 Text(
                   'Stock actual',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$current pañales',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -382,8 +382,8 @@ class _ThresholdSelector extends StatelessWidget {
               Text(
                 'Alertar cuando queden:',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                  color: AppColors.textSecondary,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -483,7 +483,7 @@ class _SubscriptionSummary extends StatelessWidget {
           _Row(
             icon: Icons.attach_money_rounded,
             label: 'Costo mensual',
-            value: '\$${sub.estimatedMonthlyCost.toStringAsFixed(2)}',
+            value: 'COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}',
           ),
         ],
       ),
