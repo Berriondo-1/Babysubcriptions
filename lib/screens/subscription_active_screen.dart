@@ -427,7 +427,7 @@ class _PaymentCard extends StatelessWidget {
             ),
           ),
           Text(
-            '\$${monthlyCost.toStringAsFixed(2)}',
+            'COP ${monthlyCost.toStringAsFixed(0)}',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,

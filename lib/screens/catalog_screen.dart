@@ -23,7 +23,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       emoji: d['emoji'] ?? '📦',
       packPrice: (d['packPrice'] ?? 0).toDouble(),
       unitsPerPack: d['unitsPerPack'] ?? 0,
-      imageUrl: d['imageUrl'],          // ← nuevo
+      imageUrl: d['imageUrl'], // ← nuevo
       size: DiaperSize.values.firstWhere(
         (s) => s.name == d['size'],
         orElse: () => DiaperSize.size1,
@@ -56,13 +56,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
           }
           if (snapshot.hasError) {
             return Center(
-              child: Text('Error cargando catálogo',
-                  style: TextStyle(color: AppColors.error)),
+              child: Text(
+                'Error cargando catálogo',
+                style: TextStyle(color: AppColors.error),
+              ),
             );
           }
 
-          final allProducts =
-              (snapshot.data?.docs ?? []).map(_fromDoc).toList();
+          final allProducts = (snapshot.data?.docs ?? [])
+              .map(_fromDoc)
+              .toList();
 
           final filtered = _selectedFilter == null
               ? allProducts
@@ -80,8 +83,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 14),
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
                         itemBuilder: (_, i) =>
                             _ProductCard(product: filtered[i]),
                       ),
@@ -109,8 +111,10 @@ class _FilterBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Filtrar por talla',
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Filtrar por talla',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -122,16 +126,17 @@ class _FilterBar extends StatelessWidget {
                   onTap: () => onChanged(null),
                 ),
                 const SizedBox(width: 8),
-                ...DiaperSize.values.map((size) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _FilterChip(
-                        label: size.label,
-                        subtitle: size.weightRange,
-                        isSelected: selected == size,
-                        onTap: () =>
-                            onChanged(size == selected ? null : size),
-                      ),
-                    )),
+                ...DiaperSize.values.map(
+                  (size) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _FilterChip(
+                      label: size.label,
+                      subtitle: size.weightRange,
+                      isSelected: selected == size,
+                      onTap: () => onChanged(size == selected ? null : size),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -239,13 +244,17 @@ class _ProductCard extends StatelessWidget {
                         product.imageUrl!,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Center(
-                          child: Text(product.emoji,
-                              style: const TextStyle(fontSize: 28)),
+                          child: Text(
+                            product.emoji,
+                            style: const TextStyle(fontSize: 28),
+                          ),
                         ),
                       )
                     : Center(
-                        child: Text(product.emoji,
-                            style: const TextStyle(fontSize: 28)),
+                        child: Text(
+                          product.emoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
                       ),
               ),
             ),
@@ -258,22 +267,25 @@ class _ProductCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(product.name,
-                            style: Theme.of(context).textTheme.titleMedium),
+                        child: Text(
+                          product.name,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
                       _StockBadge(status: product.stockStatus),
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(product.brand,
-                      style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    product.brand,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     product.description,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(fontSize: 12),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontSize: 12),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -286,18 +298,15 @@ class _ProductCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '\$${product.packPrice.toStringAsFixed(2)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            'COP ${product.packPrice.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(color: AppColors.primary),
                           ),
                           Text(
-                            'pack de ${product.unitsPerPack} uds · \$${product.pricePerUnit.toStringAsFixed(2)}/ud',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(fontSize: 11),
+                            'pack de ${product.unitsPerPack} uds · COP ${product.pricePerUnit.toStringAsFixed(0)}/ud',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(fontSize: 11),
                           ),
                         ],
                       ),
@@ -339,12 +348,17 @@ class _StockBadge extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Text(
         status.label,
-        style:
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: text),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: text,
+        ),
       ),
     );
   }
@@ -365,9 +379,10 @@ class _SizeChip extends StatelessWidget {
       child: Text(
         '${size.label}  ·  ${size.weightRange}',
         style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
       ),
     );
   }
@@ -386,11 +401,15 @@ class _EmptyState extends StatelessWidget {
         children: [
           const Text('📦', style: TextStyle(fontSize: 56)),
           const SizedBox(height: 16),
-          Text('Sin productos para esta talla',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Sin productos para esta talla',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 6),
-          Text('Intenta con otra talla',
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Intenta con otra talla',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
     );

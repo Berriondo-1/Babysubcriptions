@@ -493,7 +493,7 @@ class _CostCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '\$${cost.toStringAsFixed(2)}',
+                  'COP ${cost.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: AppColors.primaryDark,
                     fontWeight: FontWeight.w700,

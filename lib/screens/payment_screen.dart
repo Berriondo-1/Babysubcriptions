@@ -196,7 +196,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                             const Icon(Icons.lock_rounded, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'Pagar \$${sub.estimatedMonthlyCost.toStringAsFixed(2)}/mes',
+                              'Pagar COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}/mes',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -337,7 +337,7 @@ class _OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           _SummaryRow(
             label: 'Precio por unidad',
-            value: '\$${sub.diaperType.pricePerUnit.toStringAsFixed(2)}',
+            value: 'COP ${sub.diaperType.pricePerUnit.toStringAsFixed(0)}',
           ),
           const SizedBox(height: 8),
           _SummaryRow(
@@ -359,7 +359,7 @@ class _OrderSummaryCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${sub.estimatedMonthlyCost.toStringAsFixed(2)}',
+                'COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
