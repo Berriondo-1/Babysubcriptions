@@ -79,15 +79,17 @@ class _FilterBar extends StatelessWidget {
                   onTap: () => onChanged(null),
                 ),
                 const SizedBox(width: 8),
-                ...DiaperSize.values.map((size) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _FilterChip(
-                        label: size.label,
-                        subtitle: size.weightRange,
-                        isSelected: selected == size,
-                        onTap: () => onChanged(size == selected ? null : size),
-                      ),
-                    )),
+                ...DiaperSize.values.map(
+                  (size) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _FilterChip(
+                      label: size.label,
+                      subtitle: size.weightRange,
+                      isSelected: selected == size,
+                      onTap: () => onChanged(size == selected ? null : size),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -191,7 +193,10 @@ class _ProductCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
-                child: Text(product.emoji, style: const TextStyle(fontSize: 28)),
+                child: Text(
+                  product.emoji,
+                  style: const TextStyle(fontSize: 28),
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -220,9 +225,9 @@ class _ProductCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     product.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(fontSize: 12),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -235,17 +240,15 @@ class _ProductCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '\$${product.packPrice.toStringAsFixed(2)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            'COP ${product.packPrice.toStringAsFixed(0)}',
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(color: AppColors.primary),
                           ),
                           Text(
-                            'pack de ${product.unitsPerPack} uds · \$${product.pricePerUnit.toStringAsFixed(2)}/ud',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontSize: 11,
-                                ),
+                            'pack de ${product.unitsPerPack} uds · COP ${product.pricePerUnit.toStringAsFixed(0)}/ud',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(fontSize: 11),
                           ),
                         ],
                       ),
