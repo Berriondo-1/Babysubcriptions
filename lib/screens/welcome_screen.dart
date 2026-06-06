@@ -51,7 +51,7 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 Text(
-                  'Smart diaper tracking and\nsubscription management for\nyour baby.',
+                  'Seguimiento inteligente de pañales\ny gestión de suscripciones\npara tu bebé.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                         height: 1.6,
@@ -66,7 +66,7 @@ class WelcomeScreen extends StatelessWidget {
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const RegisterScreen()),
                   ),
-                  child: const Text('Sign up'),
+                  child: const Text('Registrarse'),
                 ),
 
                 const SizedBox(height: 14),
@@ -93,7 +93,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                     ),
                     child: Text(
-                      'Log in',
+                      'Iniciar sesión',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: AppColors.primary,
                           ),

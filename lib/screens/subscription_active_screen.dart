@@ -1,7 +1,7 @@
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
-import 'package:baby_subscription/screens/payment_screen.dart';
+import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

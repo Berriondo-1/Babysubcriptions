@@ -136,7 +136,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
               const SizedBox(height: 12),
               sub != null
                   ? _SubscriptionSummary(sub: sub)
-                  : _NoSubscriptionCard(),
+                  : const _NoSubscriptionCard(),
               const SizedBox(height: 32),
 
               // Botón reordenar
@@ -522,6 +522,8 @@ class _Row extends StatelessWidget {
 }
 
 class _NoSubscriptionCard extends StatelessWidget {
+  const _NoSubscriptionCard();
+
   @override
   Widget build(BuildContext context) {
     return Container(

@@ -1,4 +1,32 @@
-import 'package:baby_subscription/screens/payment_screen.dart';
+import 'package:flutter/material.dart';
+
+// PaymentMethod se define aquí (en el modelo) y payment_screen.dart lo importa
+// para evitar la dependencia circular invertida anterior.
+enum PaymentMethod { card, paypal, transferencia }
+
+extension PaymentMethodExt on PaymentMethod {
+  String get label {
+    switch (this) {
+      case PaymentMethod.card:
+        return 'Tarjeta de crédito/débito';
+      case PaymentMethod.paypal:
+        return 'PayPal';
+      case PaymentMethod.transferencia:
+        return 'Transferencia bancaria';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case PaymentMethod.card:
+        return Icons.credit_card_rounded;
+      case PaymentMethod.paypal:
+        return Icons.account_balance_wallet_rounded;
+      case PaymentMethod.transferencia:
+        return Icons.account_balance_rounded;
+    }
+  }
+}
 
 enum PaymentStatus { approved, rejected, pending }
 
@@ -52,7 +80,7 @@ class PaymentRecord {
     subscriptionId: m['subscription_id'] as int,
     userId: m['user_id'] as int,
     transactionId: m['transaction_id'] as String,
-    amount: m['amount'] as double,
+    amount: (m['amount'] as num).toDouble(),
     paymentMethod: PaymentMethod.values.firstWhere(
       (e) => e.name == m['payment_method'],
       orElse: () => PaymentMethod.card,

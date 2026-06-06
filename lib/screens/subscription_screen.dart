@@ -6,7 +6,6 @@ import 'package:baby_subscription/screens/payment_screen.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:baby_subscription/providers/stock_provider.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   final BabyProfile babyProfile;
@@ -44,61 +43,50 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   void _prefillFromBabyProfile() {
     final w = widget.babyProfile.weightKg;
-    if (w < 3)
+    if (w < 3) {
       _selectedType = DiaperType.newborn;
-    else if (w < 5)
+    } else if (w < 5) {
       _selectedType = DiaperType.size1;
-    else if (w < 8)
+    } else if (w < 8) {
       _selectedType = DiaperType.size2;
-    else if (w < 11)
+    } else if (w < 11) {
       _selectedType = DiaperType.size3;
-    else if (w < 14)
+    } else if (w < 14) {
       _selectedType = DiaperType.size4;
-    else
+    } else {
       _selectedType = DiaperType.size5;
+    }
   }
 
   Future<void> _save() async {
-  final authProv = context.read<AuthProvider>();
-  final subProv = context.read<SubscriptionProvider>();
-  final stockProv = context.read<StockProvider>(); // ← nuevo
-  final existing = subProv.current;
+    final authProv = context.read<AuthProvider>();
+    final subProv = context.read<SubscriptionProvider>();
+    final existing = subProv.current;
 
-  final sub = Subscription(
-    id: existing?.id,
-    userId: authProv.currentUser!.id!,
-    babyProfileId: widget.babyProfile.id!,
-    diaperType: _selectedType,
-    quantityPerOrder: _quantity.round(),
-    frequency: _selectedFrequency,
-    isActive: true,
-    createdAt: existing?.createdAt ?? DateTime.now(),
-  );
+    // Construimos la suscripción pero NO la guardamos aquí.
+    // El guardado ocurre en PaymentScreen SOLO si el pago es aprobado,
+    // evitando que el stock se reponga antes de confirmar el pago.
+    final sub = Subscription(
+      id: existing?.id,
+      userId: authProv.currentUser!.id!,
+      babyProfileId: widget.babyProfile.id!,
+      diaperType: _selectedType,
+      quantityPerOrder: _quantity.round(),
+      frequency: _selectedFrequency,
+      isActive: true,
+      createdAt: existing?.createdAt ?? DateTime.now(),
+    );
 
-  final ok = await subProv.saveSubscription(sub, stockProv); // ← pasar stockProv
-  if (!mounted) return;
-
-  if (ok) {
-    final savedSub = subProv.current!;
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PaymentScreen(
           babyProfile: widget.babyProfile,
-          subscription: savedSub,
+          subscription: sub,
         ),
       ),
     );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(subProv.errorMessage ?? 'Error al guardar.'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {

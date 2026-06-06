@@ -1,4 +1,5 @@
 import 'package:baby_subscription/models/baby_profile.dart';
+import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/stock_provider.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:baby_subscription/providers/auth_provider.dart';
@@ -531,7 +532,7 @@ class _ThresholdCard extends StatelessWidget {
 }
 
 class _SubInfoCard extends StatelessWidget {
-  final sub;
+  final Subscription sub;
   const _SubInfoCard({required this.sub});
 
   @override

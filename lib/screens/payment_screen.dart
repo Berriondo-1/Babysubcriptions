@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/models/subscription.dart';
+import 'package:baby_subscription/providers/stock_provider.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:baby_subscription/screens/subscription_active_screen.dart';
 import 'package:baby_subscription/services/database_service.dart';
@@ -10,31 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-enum PaymentMethod { card, paypal, transferencia }
-
-extension PaymentMethodExt on PaymentMethod {
-  String get label {
-    switch (this) {
-      case PaymentMethod.card:
-        return 'Tarjeta de crédito/débito';
-      case PaymentMethod.paypal:
-        return 'PayPal';
-      case PaymentMethod.transferencia:
-        return 'Transferencia bancaria';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case PaymentMethod.card:
-        return Icons.credit_card_rounded;
-      case PaymentMethod.paypal:
-        return Icons.account_balance_wallet_rounded;
-      case PaymentMethod.transferencia:
-        return Icons.account_balance_rounded;
-    }
-  }
-}
+// PaymentMethod y PaymentMethodExt viven en models/payment_record.dart
 
 class PaymentScreen extends StatefulWidget {
   final BabyProfile babyProfile;
@@ -100,18 +77,12 @@ class _PaymentScreenState extends State<PaymentScreen>
   String _generateTransactionId() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final rng = Random.secure();
-    final part1 = List.generate(
-      4,
-      (_) => chars[rng.nextInt(chars.length)],
-    ).join();
-    final part2 = List.generate(
-      4,
-      (_) => chars[rng.nextInt(chars.length)],
-    ).join();
-    final part3 = List.generate(
-      4,
-      (_) => chars[rng.nextInt(chars.length)],
-    ).join();
+    final part1 =
+        List.generate(4, (_) => chars[rng.nextInt(chars.length)]).join();
+    final part2 =
+        List.generate(4, (_) => chars[rng.nextInt(chars.length)]).join();
+    final part3 =
+        List.generate(4, (_) => chars[rng.nextInt(chars.length)]).join();
     return 'BSQ-$part1-$part2-$part3';
   }
 
@@ -121,7 +92,7 @@ class _PaymentScreenState extends State<PaymentScreen>
     await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
 
-    // Simular rechazo ~20% de las veces (solo tarjeta, para hacerlo realista)
+    // Simular rechazo ~20 % (solo tarjeta)
     final isRejected =
         _selectedMethod == PaymentMethod.card && Random().nextInt(5) == 0;
 
@@ -144,18 +115,18 @@ class _PaymentScreenState extends State<PaymentScreen>
           ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 4),
         ),
       );
       return;
     }
 
-    // Pago aprobado: guardar suscripción
+    // Pago aprobado: guardar suscripción y reponer stock
     final subProv = context.read<SubscriptionProvider>();
-    await subProv.saveSubscription(widget.subscription);
+    final stockProv = context.read<StockProvider>(); // ← FIX: pasar stockProv
+    await subProv.saveSubscription(widget.subscription, stockProv);
 
     final savedSub = subProv.current ?? widget.subscription;
     final transactionId = _generateTransactionId();
@@ -175,7 +146,7 @@ class _PaymentScreenState extends State<PaymentScreen>
         ),
       );
     } catch (_) {
-      // No bloquear la navegación si falla el guardado del historial
+      // No bloquear la navegación si falla el historial
     }
 
     setState(() => _processing = false);
@@ -334,9 +305,10 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: AppColors.textPrimary),
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: AppColors.textPrimary),
         ),
       ],
     );
@@ -503,9 +475,11 @@ class _PaymentMethodSelector extends StatelessWidget {
             onTap: () => onChanged(method),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryLight : AppColors.surface,
+                color:
+                    isSelected ? AppColors.primaryLight : AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isSelected ? AppColors.primary : AppColors.divider,
@@ -526,9 +500,7 @@ class _PaymentMethodSelector extends StatelessWidget {
                     child: Icon(
                       method.icon,
                       size: 20,
-                      color: isSelected
-                          ? Colors.white
-                          : AppColors.textSecondary,
+                      color: isSelected ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -693,7 +665,8 @@ class _InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1),
+        border: Border.all(
+            color: AppColors.primary.withOpacity(0.3), width: 1),
       ),
       child: Row(
         children: [
@@ -735,10 +708,10 @@ class _TransferInfo extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _BankRow(label: 'Banco', value: 'BabyBank S.A.'),
-          _BankRow(label: 'Cuenta', value: '001-2345-6789-01'),
-          _BankRow(label: 'Tipo', value: 'Ahorros'),
-          _BankRow(label: 'Titular', value: 'BabySubscription LLC'),
+          const _BankRow(label: 'Banco', value: 'BabyBank S.A.'),
+          const _BankRow(label: 'Cuenta', value: '001-2345-6789-01'),
+          const _BankRow(label: 'Tipo', value: 'Ahorros'),
+          const _BankRow(label: 'Titular', value: 'BabySubscription LLC'),
           const SizedBox(height: 8),
           Text(
             'Envía el comprobante a pagos@babysubscription.com con tu número de pedido.',
@@ -855,14 +828,16 @@ class _ProcessingOverlay extends StatelessWidget {
           const SizedBox(height: 28),
           Text(
             'Procesando pago...',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: AppColors.textPrimary),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
           Text(
             'Por favor no cierres la app',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style:
+                TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 28),
           const SizedBox(
