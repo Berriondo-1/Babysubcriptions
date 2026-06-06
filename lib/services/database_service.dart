@@ -1,6 +1,7 @@
 import 'package:baby_subscription/models/app_user.dart';
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/models/diaper_consumption.dart';
+import 'package:baby_subscription/models/order_record.dart';
 import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:path/path.dart';
@@ -22,7 +23,7 @@ class DatabaseService {
     final path = join(databasesPath, 'baby_subscription_v2.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -82,6 +83,21 @@ class DatabaseService {
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
           )
         ''');
+        await db.execute('''
+          CREATE TABLE orders(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            order_number TEXT NOT NULL UNIQUE,
+            diaper_type_label TEXT NOT NULL DEFAULT '',
+            quantity INTEGER NOT NULL DEFAULT 0,
+            frequency_label TEXT NOT NULL DEFAULT '',
+            total_amount REAL NOT NULL DEFAULT 0,
+            payment_method_label TEXT NOT NULL DEFAULT '',
+            delivery_status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -127,9 +143,28 @@ class DatabaseService {
             )
           ''');
         }
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS orders(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              order_number TEXT NOT NULL UNIQUE,
+              diaper_type_label TEXT NOT NULL DEFAULT '',
+              quantity INTEGER NOT NULL DEFAULT 0,
+              frequency_label TEXT NOT NULL DEFAULT '',
+              total_amount REAL NOT NULL DEFAULT 0,
+              payment_method_label TEXT NOT NULL DEFAULT '',
+              delivery_status TEXT NOT NULL DEFAULT 'pending',
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          ''');
+        }
       },
     );
   }
+
+  // ── Suscripciones ─────────────────────────────────────────────
 
   Future<Subscription?> getActiveSubscription(
     int userId,
@@ -174,6 +209,8 @@ class DatabaseService {
     );
   }
 
+  // ── Usuarios ──────────────────────────────────────────────────
+
   Future<AppUser?> getUserByEmail(String email) async {
     final db = await database;
     final result = await db.query(
@@ -192,6 +229,8 @@ class DatabaseService {
     final id = await db.insert('users', map);
     return user.copyWith(id: id);
   }
+
+  // ── Bebés ─────────────────────────────────────────────────────
 
   Future<List<BabyProfile>> getBabyProfiles(int userId) async {
     final db = await database;
@@ -228,6 +267,8 @@ class DatabaseService {
     await db.delete('baby_profiles', where: 'id = ?', whereArgs: [profileId]);
   }
 
+  // ── Consumo ───────────────────────────────────────────────────
+
   Future<List<DiaperConsumption>> getConsumptionHistory(
     int babyProfileId,
   ) async {
@@ -259,6 +300,8 @@ class DatabaseService {
     }
   }
 
+  // ── Pagos ─────────────────────────────────────────────────────
+
   Future<PaymentRecord> savePayment(PaymentRecord payment) async {
     final db = await database;
     final map = payment.toMap()..remove('id');
@@ -285,5 +328,40 @@ class DatabaseService {
       limit: 50,
     );
     return result.map(PaymentRecord.fromMap).toList();
+  }
+
+  // ── Pedidos (HU-08) ───────────────────────────────────────────
+
+  Future<OrderRecord> saveOrder(OrderRecord order) async {
+    final db = await database;
+    final map = order.toMap()..remove('id');
+    final id = await db.insert(
+      'orders',
+      map,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    return OrderRecord(
+      id: id,
+      userId: order.userId,
+      orderNumber: order.orderNumber,
+      diaperTypeLabel: order.diaperTypeLabel,
+      quantity: order.quantity,
+      frequencyLabel: order.frequencyLabel,
+      totalAmount: order.totalAmount,
+      paymentMethodLabel: order.paymentMethodLabel,
+      deliveryStatus: order.deliveryStatus,
+      createdAt: order.createdAt,
+    );
+  }
+
+  Future<List<OrderRecord>> getOrders(int userId) async {
+    final db = await database;
+    final result = await db.query(
+      'orders',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'created_at DESC',
+    );
+    return result.map(OrderRecord.fromMap).toList();
   }
 }

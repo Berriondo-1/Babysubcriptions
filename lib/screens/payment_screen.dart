@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:baby_subscription/models/baby_profile.dart';
+import 'package:baby_subscription/models/order_record.dart';
 import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/stock_provider.dart';
@@ -179,6 +180,28 @@ class _PaymentScreenState extends State<PaymentScreen>
     } catch (_) {
       // No bloquear la navegación si falla el historial
     }
+
+    // ── HU-08: Guardar pedido en historial ────────────────────
+    try {
+      final orderNumber =
+          'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${transactionId.substring(4, 8)}';
+      await DatabaseService.instance.saveOrder(
+        OrderRecord(
+          userId: widget.subscription.userId,
+          orderNumber: orderNumber,
+          diaperTypeLabel: widget.subscription.diaperType.label,
+          quantity: widget.subscription.quantityPerOrder,
+          frequencyLabel: widget.subscription.frequency.label,
+          totalAmount: widget.subscription.estimatedMonthlyCost,
+          paymentMethodLabel: _selectedMethod.label,
+          deliveryStatus: DeliveryStatus.pending,
+          createdAt: now,
+        ),
+      );
+    } catch (_) {
+      // No bloquear la navegación si falla el pedido
+    }
+    // ─────────────────────────────────────────────────────────
 
     setState(() => _processing = false);
     if (!mounted) return;
