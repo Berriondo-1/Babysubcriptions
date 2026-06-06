@@ -1,6 +1,7 @@
 import 'package:baby_subscription/models/app_user.dart';
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/models/diaper_consumption.dart';
+import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -21,7 +22,7 @@ class DatabaseService {
     final path = join(databasesPath, 'baby_subscription_v2.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -67,6 +68,20 @@ class DatabaseService {
             FOREIGN KEY(baby_profile_id) REFERENCES baby_profiles(id) ON DELETE CASCADE
           )
         ''');
+        await db.execute('''
+          CREATE TABLE payment_history(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscription_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            transaction_id TEXT NOT NULL UNIQUE,
+            amount REAL NOT NULL,
+            payment_method TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -93,6 +108,22 @@ class DatabaseService {
               date TEXT NOT NULL,
               diaper_count INTEGER NOT NULL,
               FOREIGN KEY(baby_profile_id) REFERENCES baby_profiles(id) ON DELETE CASCADE
+            )
+          ''');
+        }
+        if (oldVersion < 4) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS payment_history(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              subscription_id INTEGER NOT NULL,
+              user_id INTEGER NOT NULL,
+              transaction_id TEXT NOT NULL UNIQUE,
+              amount REAL NOT NULL,
+              payment_method TEXT NOT NULL,
+              status TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             )
           ''');
         }
@@ -226,5 +257,33 @@ class DatabaseService {
       final id = await db.insert('diaper_consumption', map);
       return entry.copyWith(id: id);
     }
+  }
+
+  Future<PaymentRecord> savePayment(PaymentRecord payment) async {
+    final db = await database;
+    final map = payment.toMap()..remove('id');
+    final id = await db.insert('payment_history', map);
+    return PaymentRecord(
+      id: id,
+      subscriptionId: payment.subscriptionId,
+      userId: payment.userId,
+      transactionId: payment.transactionId,
+      amount: payment.amount,
+      paymentMethod: payment.paymentMethod,
+      status: payment.status,
+      createdAt: payment.createdAt,
+    );
+  }
+
+  Future<List<PaymentRecord>> getPaymentHistory(int userId) async {
+    final db = await database;
+    final result = await db.query(
+      'payment_history',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'created_at DESC',
+      limit: 50,
+    );
+    return result.map(PaymentRecord.fromMap).toList();
   }
 }

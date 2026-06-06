@@ -1,7 +1,10 @@
+import 'dart:math';
 import 'package:baby_subscription/models/baby_profile.dart';
+import 'package:baby_subscription/models/payment_record.dart';
 import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:baby_subscription/screens/subscription_active_screen.dart';
+import 'package:baby_subscription/services/database_service.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -94,18 +97,98 @@ class _PaymentScreenState extends State<PaymentScreen>
 
   bool get _canPay => _termsAccepted && _cardFormValid;
 
+  String _generateTransactionId() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rng = Random.secure();
+    final part1 = List.generate(
+      4,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    final part2 = List.generate(
+      4,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    final part3 = List.generate(
+      4,
+      (_) => chars[rng.nextInt(chars.length)],
+    ).join();
+    return 'BSQ-$part1-$part2-$part3';
+  }
+
   Future<void> _processPay() async {
     if (!_canPay) return;
     setState(() => _processing = true);
     await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
+
+    // Simular rechazo ~20% de las veces (solo tarjeta, para hacerlo realista)
+    final isRejected =
+        _selectedMethod == PaymentMethod.card && Random().nextInt(5) == 0;
+
+    if (isRejected) {
+      setState(() => _processing = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Pago rechazado. Verifica los datos de tu tarjeta e intenta de nuevo.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Pago aprobado: guardar suscripción
+    final subProv = context.read<SubscriptionProvider>();
+    await subProv.saveSubscription(widget.subscription);
+
+    final savedSub = subProv.current ?? widget.subscription;
+    final transactionId = _generateTransactionId();
+    final now = DateTime.now();
+
+    // Guardar registro de pago en historial local
+    try {
+      await DatabaseService.instance.savePayment(
+        PaymentRecord(
+          subscriptionId: savedSub.id ?? 0,
+          userId: widget.subscription.userId,
+          transactionId: transactionId,
+          amount: widget.subscription.estimatedMonthlyCost,
+          paymentMethod: _selectedMethod,
+          status: PaymentStatus.approved,
+          createdAt: now,
+        ),
+      );
+    } catch (_) {
+      // No bloquear la navegación si falla el guardado del historial
+    }
+
     setState(() => _processing = false);
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (_, anim, __) => SubscriptionActiveScreen(
           babyProfile: widget.babyProfile,
-          subscription: widget.subscription,
+          subscription: savedSub,
           paymentMethod: _selectedMethod,
+          transactionId: transactionId,
+          paymentDate: now,
         ),
         transitionsBuilder: (_, anim, __, child) =>
             FadeTransition(opacity: anim, child: child),
@@ -196,7 +279,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                             const Icon(Icons.lock_rounded, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'Pagar COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}/mes',
+                              'Pagar \$${sub.estimatedMonthlyCost.toStringAsFixed(2)}/mes',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -337,7 +420,7 @@ class _OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           _SummaryRow(
             label: 'Precio por unidad',
-            value: 'COP ${sub.diaperType.pricePerUnit.toStringAsFixed(0)}',
+            value: '\$${sub.diaperType.pricePerUnit.toStringAsFixed(2)}',
           ),
           const SizedBox(height: 8),
           _SummaryRow(
@@ -359,7 +442,7 @@ class _OrderSummaryCard extends StatelessWidget {
                 ),
               ),
               Text(
-                'COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}',
+                '\$${sub.estimatedMonthlyCost.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
