@@ -1,6 +1,6 @@
-import 'package:baby_subscription/data/product_catalog.dart';
 import 'package:baby_subscription/models/product.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -11,11 +11,28 @@ class CatalogScreen extends StatefulWidget {
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  DiaperSize? _selectedFilter; // null = mostrar todos
+  DiaperSize? _selectedFilter;
 
-  List<Product> get _filtered {
-    if (_selectedFilter == null) return ProductCatalog.all;
-    return ProductCatalog.bySize(_selectedFilter!);
+  Product _fromDoc(QueryDocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return Product(
+      id: doc.id,
+      name: d['name'] ?? '',
+      brand: d['brand'] ?? '',
+      description: d['description'] ?? '',
+      emoji: d['emoji'] ?? '📦',
+      packPrice: (d['packPrice'] ?? 0).toDouble(),
+      unitsPerPack: d['unitsPerPack'] ?? 0,
+      imageUrl: d['imageUrl'],          // ← nuevo
+      size: DiaperSize.values.firstWhere(
+        (s) => s.name == d['size'],
+        orElse: () => DiaperSize.size1,
+      ),
+      stockStatus: StockStatus.values.firstWhere(
+        (s) => s.name == d['stockStatus'],
+        orElse: () => StockStatus.inStock,
+      ),
+    );
   }
 
   @override
@@ -26,34 +43,62 @@ class _CatalogScreenState extends State<CatalogScreen> {
         title: const Text('Catálogo de pañales'),
         leading: const BackButton(),
       ),
-      body: Column(
-        children: [
-          _FilterBar(
-            selected: _selectedFilter,
-            onChanged: (size) => setState(() => _selectedFilter = size),
-          ),
-          Expanded(
-            child: _filtered.isEmpty
-                ? const _EmptyState()
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                    itemCount: _filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (_, i) => _ProductCard(product: _filtered[i]),
-                  ),
-          ),
-        ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('catalog')
+            .orderBy('createdAt', descending: false)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error cargando catálogo',
+                  style: TextStyle(color: AppColors.error)),
+            );
+          }
+
+          final allProducts =
+              (snapshot.data?.docs ?? []).map(_fromDoc).toList();
+
+          final filtered = _selectedFilter == null
+              ? allProducts
+              : allProducts.where((p) => p.size == _selectedFilter).toList();
+
+          return Column(
+            children: [
+              _FilterBar(
+                selected: _selectedFilter,
+                onChanged: (size) => setState(() => _selectedFilter = size),
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? const _EmptyState()
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 14),
+                        itemBuilder: (_, i) =>
+                            _ProductCard(product: filtered[i]),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-// ─── Filter bar ─────────────────────────────────────────────────────────────
+// ─── Filter bar ───────────────────────────────────────────────────────────────
 
 class _FilterBar extends StatelessWidget {
   final DiaperSize? selected;
   final ValueChanged<DiaperSize?> onChanged;
-
   const _FilterBar({required this.selected, required this.onChanged});
 
   @override
@@ -64,10 +109,8 @@ class _FilterBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Filtrar por talla',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text('Filtrar por talla',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -85,7 +128,8 @@ class _FilterBar extends StatelessWidget {
                         label: size.label,
                         subtitle: size.weightRange,
                         isSelected: selected == size,
-                        onTap: () => onChanged(size == selected ? null : size),
+                        onTap: () =>
+                            onChanged(size == selected ? null : size),
                       ),
                     )),
               ],
@@ -102,7 +146,6 @@ class _FilterChip extends StatelessWidget {
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
-
   const _FilterChip({
     required this.label,
     this.subtitle,
@@ -155,11 +198,10 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-// ─── Product card ────────────────────────────────────────────────────────────
+// ─── Product card ─────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
   final Product product;
-
   const _ProductCard({required this.product});
 
   @override
@@ -182,7 +224,7 @@ class _ProductCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Emoji / imagen
+            // Imagen o emoji
             Container(
               width: 60,
               height: 60,
@@ -190,13 +232,25 @@ class _ProductCard extends StatelessWidget {
                 color: AppColors.primaryLight,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Center(
-                child: Text(product.emoji, style: const TextStyle(fontSize: 28)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: product.imageUrl != null
+                    ? Image.network(
+                        product.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(product.emoji,
+                              style: const TextStyle(fontSize: 28)),
+                        ),
+                      )
+                    : Center(
+                        child: Text(product.emoji,
+                            style: const TextStyle(fontSize: 28)),
+                      ),
               ),
             ),
             const SizedBox(width: 14),
 
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,25 +258,22 @@ class _ProductCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          product.name,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
+                        child: Text(product.name,
+                            style: Theme.of(context).textTheme.titleMedium),
                       ),
                       _StockBadge(status: product.stockStatus),
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    product.brand,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(product.brand,
+                      style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 6),
                   Text(
                     product.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(fontSize: 12),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -243,9 +294,10 @@ class _ProductCard extends StatelessWidget {
                           ),
                           Text(
                             'pack de ${product.unitsPerPack} uds · \$${product.pricePerUnit.toStringAsFixed(2)}/ud',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontSize: 11,
-                                ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(fontSize: 11),
                           ),
                         ],
                       ),
@@ -260,6 +312,8 @@ class _ProductCard extends StatelessWidget {
     );
   }
 }
+
+// ─── Badges y chips ───────────────────────────────────────────────────────────
 
 class _StockBadge extends StatelessWidget {
   final StockStatus status;
@@ -285,17 +339,12 @@ class _StockBadge extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Text(
         status.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: text,
-        ),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: text),
       ),
     );
   }
@@ -316,16 +365,15 @@ class _SizeChip extends StatelessWidget {
       child: Text(
         '${size.label}  ·  ${size.weightRange}',
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
-        ),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary),
       ),
     );
   }
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
@@ -338,15 +386,11 @@ class _EmptyState extends StatelessWidget {
         children: [
           const Text('📦', style: TextStyle(fontSize: 56)),
           const SizedBox(height: 16),
-          Text(
-            'Sin productos para esta talla',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Sin productos para esta talla',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
-          Text(
-            'Intenta con otra talla',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text('Intenta con otra talla',
+              style: Theme.of(context).textTheme.bodyMedium),
         ],
       ),
     );

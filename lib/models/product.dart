@@ -41,23 +41,26 @@ class Product {
   final String name;
   final String brand;
   final String description;
-  final double pricePerUnit;
+  final double packPrice;
   final int unitsPerPack;
   final DiaperSize size;
   final StockStatus stockStatus;
   final String emoji;
+  final String? imageUrl; // ← nuevo
 
   const Product({
     required this.id,
     required this.name,
     required this.brand,
     required this.description,
-    required this.pricePerUnit,
+    required this.packPrice,
     required this.unitsPerPack,
     required this.size,
     required this.stockStatus,
     required this.emoji,
+    this.imageUrl,       // ← nuevo
   });
 
-  double get packPrice => pricePerUnit * unitsPerPack;
+  double get pricePerUnit =>
+      unitsPerPack > 0 ? packPrice / unitsPerPack : 0.0;
 }
