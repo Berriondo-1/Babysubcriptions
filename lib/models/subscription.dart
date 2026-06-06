@@ -5,34 +5,52 @@ enum DeliveryFrequency { weekly, biweekly, monthly }
 extension DiaperTypeExt on DiaperType {
   String get label {
     switch (this) {
-      case DiaperType.newborn: return 'Newborn';
-      case DiaperType.size1:   return 'Size 1';
-      case DiaperType.size2:   return 'Size 2';
-      case DiaperType.size3:   return 'Size 3';
-      case DiaperType.size4:   return 'Size 4';
-      case DiaperType.size5:   return 'Size 5';
+      case DiaperType.newborn:
+        return 'Recién nacido';
+      case DiaperType.size1:
+        return 'Talla 1';
+      case DiaperType.size2:
+        return 'Talla 2';
+      case DiaperType.size3:
+        return 'Talla 3';
+      case DiaperType.size4:
+        return 'Talla 4';
+      case DiaperType.size5:
+        return 'Talla 5';
     }
   }
 
   String get weightRange {
     switch (this) {
-      case DiaperType.newborn: return '< 3 kg';
-      case DiaperType.size1:   return '3–5 kg';
-      case DiaperType.size2:   return '5–8 kg';
-      case DiaperType.size3:   return '8–11 kg';
-      case DiaperType.size4:   return '11–14 kg';
-      case DiaperType.size5:   return '14–17 kg';
+      case DiaperType.newborn:
+        return '< 3 kg';
+      case DiaperType.size1:
+        return '3–5 kg';
+      case DiaperType.size2:
+        return '5–8 kg';
+      case DiaperType.size3:
+        return '8–11 kg';
+      case DiaperType.size4:
+        return '11–14 kg';
+      case DiaperType.size5:
+        return '14–17 kg';
     }
   }
 
   double get pricePerUnit {
     switch (this) {
-      case DiaperType.newborn: return 0.22;
-      case DiaperType.size1:   return 0.24;
-      case DiaperType.size2:   return 0.26;
-      case DiaperType.size3:   return 0.28;
-      case DiaperType.size4:   return 0.30;
-      case DiaperType.size5:   return 0.32;
+      case DiaperType.newborn:
+        return 950.0;
+      case DiaperType.size1:
+        return 1050.0;
+      case DiaperType.size2:
+        return 1150.0;
+      case DiaperType.size3:
+        return 1250.0;
+      case DiaperType.size4:
+        return 1350.0;
+      case DiaperType.size5:
+        return 1450.0;
     }
   }
 }
@@ -40,17 +58,23 @@ extension DiaperTypeExt on DiaperType {
 extension DeliveryFrequencyExt on DeliveryFrequency {
   String get label {
     switch (this) {
-      case DeliveryFrequency.weekly:    return 'Weekly';
-      case DeliveryFrequency.biweekly:  return 'Bi-weekly';
-      case DeliveryFrequency.monthly:   return 'Monthly';
+      case DeliveryFrequency.weekly:
+        return 'Semanal';
+      case DeliveryFrequency.biweekly:
+        return 'Quincenal';
+      case DeliveryFrequency.monthly:
+        return 'Mensual';
     }
   }
 
   int get deliveriesPerMonth {
     switch (this) {
-      case DeliveryFrequency.weekly:   return 4;
-      case DeliveryFrequency.biweekly: return 2;
-      case DeliveryFrequency.monthly:  return 1;
+      case DeliveryFrequency.weekly:
+        return 4;
+      case DeliveryFrequency.biweekly:
+        return 2;
+      case DeliveryFrequency.monthly:
+        return 1;
     }
   }
 }
@@ -83,32 +107,32 @@ class Subscription {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'user_id': userId,
-        'baby_profile_id': babyProfileId,
-        'diaper_type': diaperType.name,
-        'quantity_per_order': quantityPerOrder,
-        'frequency': frequency.name,
-        'is_active': isActive ? 1 : 0,
-        'created_at': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'user_id': userId,
+    'baby_profile_id': babyProfileId,
+    'diaper_type': diaperType.name,
+    'quantity_per_order': quantityPerOrder,
+    'frequency': frequency.name,
+    'is_active': isActive ? 1 : 0,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory Subscription.fromMap(Map<String, dynamic> m) => Subscription(
-        id: m['id'] as int?,
-        userId: m['user_id'] as int,
-        babyProfileId: m['baby_profile_id'] as int,
-        diaperType: DiaperType.values.firstWhere(
-          (e) => e.name == m['diaper_type'],
-          orElse: () => DiaperType.size1,
-        ),
-        quantityPerOrder: m['quantity_per_order'] as int,
-        frequency: DeliveryFrequency.values.firstWhere(
-          (e) => e.name == m['frequency'],
-          orElse: () => DeliveryFrequency.monthly,
-        ),
-        isActive: (m['is_active'] as int) == 1,
-        createdAt: DateTime.parse(m['created_at'] as String),
-      );
+    id: m['id'] as int?,
+    userId: m['user_id'] as int,
+    babyProfileId: m['baby_profile_id'] as int,
+    diaperType: DiaperType.values.firstWhere(
+      (e) => e.name == m['diaper_type'],
+      orElse: () => DiaperType.size1,
+    ),
+    quantityPerOrder: m['quantity_per_order'] as int,
+    frequency: DeliveryFrequency.values.firstWhere(
+      (e) => e.name == m['frequency'],
+      orElse: () => DeliveryFrequency.monthly,
+    ),
+    isActive: (m['is_active'] as int) == 1,
+    createdAt: DateTime.parse(m['created_at'] as String),
+  );
 
   Subscription copyWith({
     int? id,
@@ -119,15 +143,14 @@ class Subscription {
     DeliveryFrequency? frequency,
     bool? isActive,
     DateTime? createdAt,
-  }) =>
-      Subscription(
-        id: id ?? this.id,
-        userId: userId ?? this.userId,
-        babyProfileId: babyProfileId ?? this.babyProfileId,
-        diaperType: diaperType ?? this.diaperType,
-        quantityPerOrder: quantityPerOrder ?? this.quantityPerOrder,
-        frequency: frequency ?? this.frequency,
-        isActive: isActive ?? this.isActive,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  }) => Subscription(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    babyProfileId: babyProfileId ?? this.babyProfileId,
+    diaperType: diaperType ?? this.diaperType,
+    quantityPerOrder: quantityPerOrder ?? this.quantityPerOrder,
+    frequency: frequency ?? this.frequency,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+  );
 }
