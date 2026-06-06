@@ -20,6 +20,18 @@ class ReorderScreen extends StatefulWidget {
 class _ReorderScreenState extends State<ReorderScreen> {
   int _newThreshold = 10;
 
+  static String _fmtCOP(double v) {
+    final s = v.round().toString();
+    final buf = StringBuffer();
+    int c = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      if (c > 0 && c % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+      c++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -483,7 +495,7 @@ class _SubscriptionSummary extends StatelessWidget {
           _Row(
             icon: Icons.attach_money_rounded,
             label: 'Costo mensual',
-            value: 'COP ${sub.estimatedMonthlyCost.toStringAsFixed(0)}',
+            value: 'COP ${(sub.estimatedMonthlyCost)}',
           ),
         ],
       ),

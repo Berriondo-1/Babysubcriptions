@@ -5,6 +5,7 @@ import 'package:baby_subscription/models/subscription.dart';
 import 'package:baby_subscription/providers/stock_provider.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:baby_subscription/screens/subscription_active_screen.dart';
+import 'package:baby_subscription/services/admin_service.dart';
 import 'package:baby_subscription/services/database_service.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +17,14 @@ import 'package:provider/provider.dart';
 class PaymentScreen extends StatefulWidget {
   final BabyProfile babyProfile;
   final Subscription subscription;
+  /// DocId del producto en Firestore para decrementar stock al aprobar pago
+  final String? catalogProductId;
 
   const PaymentScreen({
     super.key,
     required this.babyProfile,
     required this.subscription,
+    this.catalogProductId,
   });
 
   @override
@@ -32,6 +36,21 @@ class _PaymentScreenState extends State<PaymentScreen>
   PaymentMethod _selectedMethod = PaymentMethod.card;
   bool _processing = false;
   bool _termsAccepted = false;
+
+  /// Formatea un valor numérico como precio colombiano sin decimales
+  /// Ej: 1234567 → "1.234.567"
+  static String _formatCOP(double value) {
+    final intVal = value.round();
+    final str = intVal.toString();
+    final buf = StringBuffer();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      if (count > 0 && count % 3 == 0) buf.write('.');
+      buf.write(str[i]);
+      count++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
 
   final _cardNumberCtrl = TextEditingController();
   final _cardNameCtrl = TextEditingController();
@@ -125,8 +144,20 @@ class _PaymentScreenState extends State<PaymentScreen>
 
     // Pago aprobado: guardar suscripción y reponer stock
     final subProv = context.read<SubscriptionProvider>();
-    final stockProv = context.read<StockProvider>(); // ← FIX: pasar stockProv
+    final stockProv = context.read<StockProvider>();
     await subProv.saveSubscription(widget.subscription, stockProv);
+
+    // Decrementar stock en Firestore si se conoce el producto del catálogo
+    if (widget.catalogProductId != null) {
+      try {
+        await AdminService.instance.decrementStock(
+          widget.catalogProductId!,
+          widget.subscription.quantityPerOrder,
+        );
+      } catch (_) {
+        // No bloquear si falla el decremento
+      }
+    }
 
     final savedSub = subProv.current ?? widget.subscription;
     final transactionId = _generateTransactionId();
@@ -250,7 +281,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                             const Icon(Icons.lock_rounded, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'Pagar \$${sub.estimatedMonthlyCost.toStringAsFixed(2)}/mes',
+                              'Pagar COP ${_formatCOP(sub.estimatedMonthlyCost)}/mes',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -323,6 +354,18 @@ class _OrderSummaryCard extends StatelessWidget {
     required this.subscription,
   });
 
+  static String _fmt(double v) {
+    final s = v.round().toString();
+    final buf = StringBuffer();
+    int c = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      if (c > 0 && c % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+      c++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
+
   @override
   Widget build(BuildContext context) {
     final sub = subscription;
@@ -392,7 +435,7 @@ class _OrderSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           _SummaryRow(
             label: 'Precio por unidad',
-            value: '\$${sub.diaperType.pricePerUnit.toStringAsFixed(2)}',
+            value: 'COP ${_OrderSummaryCard._fmt(sub.diaperType.pricePerUnit)}',
           ),
           const SizedBox(height: 8),
           _SummaryRow(
@@ -414,7 +457,7 @@ class _OrderSummaryCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${sub.estimatedMonthlyCost.toStringAsFixed(2)}',
+                'COP ${_OrderSummaryCard._fmt(sub.estimatedMonthlyCost)}',
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,

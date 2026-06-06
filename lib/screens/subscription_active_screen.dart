@@ -56,6 +56,20 @@ class _SubscriptionActiveScreenState extends State<SubscriptionActiveScreen>
     super.dispose();
   }
 
+  Future<void> _onPedidoRecibido(Subscription sub, BabyProfile baby) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _PedidoRecibidoSheet(
+        subscription: sub,
+        baby: baby,
+        transactionId: widget.transactionId,
+        paymentDate: widget.paymentDate,
+      ),
+    );
+  }
+
   Future<void> _cancelSubscription() async {
   final confirm = await showModalBottomSheet<bool>(
     context: context,
@@ -172,6 +186,31 @@ class _SubscriptionActiveScreenState extends State<SubscriptionActiveScreen>
                     const SizedBox(height: 16),
                     _DeliveriesPreview(frequency: sub.frequency),
                     const SizedBox(height: 28),
+                    // Botón "Pedido recibido"
+                    ElevatedButton(
+                      onPressed: () => _onPedidoRecibido(sub, baby),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, size: 20),
+                          SizedBox(width: 10),
+                          Text(
+                            'Pedido recibido ✅',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     OutlinedButton(
                       onPressed: _cancelSubscription,
                       style: OutlinedButton.styleFrom(
@@ -389,6 +428,18 @@ class _PaymentCard extends StatelessWidget {
   final double monthlyCost;
   const _PaymentCard({required this.method, required this.monthlyCost});
 
+  static String _fmtCOP(double v) {
+    final s = v.round().toString();
+    final buf = StringBuffer();
+    int c = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      if (c > 0 && c % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+      c++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -434,7 +485,7 @@ class _PaymentCard extends StatelessWidget {
             ),
           ),
           Text(
-            '\$${monthlyCost.toStringAsFixed(2)}',
+            'COP ${_fmtCOP(monthlyCost)}',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -779,6 +830,346 @@ class _CancelSheet extends StatelessWidget {
             child: const Text(
               'Mantener suscripción',
               style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Hoja "Pedido recibido" ─────────────────────────────────────────────────────
+
+class _PedidoRecibidoSheet extends StatelessWidget {
+  final Subscription subscription;
+  final BabyProfile baby;
+  final String transactionId;
+  final DateTime paymentDate;
+
+  const _PedidoRecibidoSheet({
+    required this.subscription,
+    required this.baby,
+    required this.transactionId,
+    required this.paymentDate,
+  });
+
+  static String _fmtCOP(double v) {
+    final s = v.round().toString();
+    final buf = StringBuffer();
+    int c = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      if (c > 0 && c % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+      c++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
+
+  static String _fmtDate(DateTime d) {
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+    ];
+    final h = d.hour.toString().padLeft(2, '0');
+    final m = d.minute.toString().padLeft(2, '0');
+    return '${d.day} de ${months[d.month - 1]} de ${d.year}  ·  $h:$m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = subscription;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Ícono de éxito
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.28),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.inventory_2_rounded,
+                  size: 36,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '¡Pedido confirmado!',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Aquí está el resumen de lo que recibirás',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Tarjeta resumen del pedido
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(20),
+                  border:
+                      Border.all(color: AppColors.divider, width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Encabezado bebé
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              baby.name.isNotEmpty
+                                  ? baby.name[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              baby.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              baby.ageLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(color: AppColors.divider, height: 1),
+                    const SizedBox(height: 14),
+
+                    // Filas del resumen
+                    _PedidoRow(
+                      icon: Icons.baby_changing_station_rounded,
+                      label: 'Producto',
+                      value:
+                          '${sub.diaperType.label} · ${sub.diaperType.weightRange}',
+                    ),
+                    _PedidoRow(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Cantidad',
+                      value: '${sub.quantityPerOrder} pañales',
+                    ),
+                    _PedidoRow(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Frecuencia',
+                      value: sub.frequency.label,
+                    ),
+                    _PedidoRow(
+                      icon: Icons.payments_outlined,
+                      label: 'Pago',
+                      value: 'COP ${_fmtCOP(sub.estimatedMonthlyCost)}/mes',
+                      highlight: true,
+                    ),
+                    _PedidoRow(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Transacción',
+                      value: transactionId,
+                      mono: true,
+                    ),
+                    _PedidoRow(
+                      icon: Icons.schedule_rounded,
+                      label: 'Fecha',
+                      value: _fmtDate(paymentDate),
+                    ),
+                    const SizedBox(height: 6),
+                    const Divider(color: AppColors.divider, height: 1),
+                    const SizedBox(height: 14),
+
+                    // Estado del pedido
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.success.withOpacity(0.35),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.local_shipping_rounded,
+                            size: 20,
+                            color: AppColors.success,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'En camino a tu hogar',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                                Text(
+                                  'Tu pedido fue procesado y llegará según la frecuencia seleccionada',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.success.withOpacity(0.8),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Botón cerrar
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('Entendido, gracias 🎉'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PedidoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool highlight;
+  final bool mono;
+
+  const _PedidoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.highlight = false,
+    this.mono = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: highlight
+                  ? AppColors.primary.withOpacity(0.12)
+                  : AppColors.primaryLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: highlight ? AppColors.primaryDark : AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: highlight ? 14 : 13,
+                fontWeight:
+                    highlight ? FontWeight.w700 : FontWeight.w600,
+                color: highlight
+                    ? AppColors.primaryDark
+                    : AppColors.textPrimary,
+                fontFamily: mono ? 'monospace' : null,
+                letterSpacing: mono ? 0.4 : null,
+              ),
             ),
           ),
         ],

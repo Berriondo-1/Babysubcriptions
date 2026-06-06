@@ -183,8 +183,27 @@ class _AdminProductCard extends StatelessWidget {
     required this.onDelete,
   });
 
+  Color _stockColor(int qty) {
+    if (qty <= 0) return AppColors.error;
+    if (qty <= 10) return Colors.orange;
+    return AppColors.success;
+  }
+
+  static String _fmtCOP(double v) {
+    final s = v.round().toString();
+    final buf = StringBuffer();
+    int c = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      if (c > 0 && c % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+      c++;
+    }
+    return buf.toString().split('').reversed.join();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final stockQty = (data['stockQuantity'] as num?)?.toInt() ?? 0;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -230,13 +249,34 @@ class _AdminProductCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '\$${(data['packPrice'] ?? 0).toStringAsFixed(2)}  ·  ${data['unitsPerPack'] ?? 0} uds',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'COP ${_fmtCOP((data["packPrice"] ?? 0).toDouble())}  ·  ${data["unitsPerPack"] ?? 0} uds/pack',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _stockColor(stockQty).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Stock: $stockQty',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _stockColor(stockQty),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -288,6 +328,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   late final TextEditingController _priceCtrl;
   late final TextEditingController _unitsCtrl;
   late final TextEditingController _emojiCtrl;
+  late final TextEditingController _stockQtyCtrl;
   String _selectedSize = 'size1';
   String _selectedStock = 'inStock';
   bool _isSaving = false;
@@ -303,11 +344,11 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   };
   final _sizeLabels = {
     'newborn': 'Recién nacido',
-    'size1': ' Talla 1',
-    'size2': ' Talla 2',
-    'size3': ' Talla 3',
-    'size4': ' Talla 4',
-    'size5': ' Talla 5',
+    'size1': 'Talla 1',
+    'size2': 'Talla 2',
+    'size3': 'Talla 3',
+    'size4': 'Talla 4',
+    'size5': 'Talla 5',
   };
 
   @override
@@ -318,12 +359,17 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     _brandCtrl = TextEditingController(text: e?['brand'] ?? '');
     _descCtrl = TextEditingController(text: e?['description'] ?? '');
     _priceCtrl = TextEditingController(
-      text: e?['packPrice'] != null ? e!['packPrice'].toString() : '',
+      text: e?['packPrice'] != null
+          ? (e!['packPrice'] as num).round().toString()
+          : '',
     );
     _unitsCtrl = TextEditingController(
       text: e?['unitsPerPack'] != null ? e!['unitsPerPack'].toString() : '',
     );
     _emojiCtrl = TextEditingController(text: e?['emoji'] ?? '🍼');
+    _stockQtyCtrl = TextEditingController(
+      text: e?['stockQuantity'] != null ? e!['stockQuantity'].toString() : '0',
+    );
     _selectedSize = e?['size'] ?? 'size1';
     _selectedStock = e?['stockStatus'] ?? 'inStock';
     _existingImageUrl = e?['imageUrl'];
@@ -337,7 +383,22 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     _priceCtrl.dispose();
     _unitsCtrl.dispose();
     _emojiCtrl.dispose();
+    _stockQtyCtrl.dispose();
     super.dispose();
+  }
+
+  /// Auto-actualiza stockStatus según la cantidad ingresada
+  void _onStockQtyChanged(String val) {
+    final qty = int.tryParse(val) ?? 0;
+    setState(() {
+      if (qty <= 0) {
+        _selectedStock = 'outOfStock';
+      } else if (qty <= 10) {
+        _selectedStock = 'lowStock';
+      } else {
+        _selectedStock = 'inStock';
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -359,7 +420,6 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
     try {
       String? imageUrl = _existingImageUrl;
 
-      // Subir imagen si se seleccionó una nueva
       if (_imageFile != null) {
         imageUrl = await AdminService.instance.uploadProductImage(
           _imageFile!,
@@ -367,15 +427,30 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
         );
       }
 
+      final stockQty = int.tryParse(_stockQtyCtrl.text) ?? 0;
+
+      // Auto-derive stockStatus from quantity
+      String derivedStock;
+      if (stockQty <= 0) {
+        derivedStock = 'outOfStock';
+      } else if (stockQty <= 10) {
+        derivedStock = 'lowStock';
+      } else {
+        derivedStock = 'inStock';
+      }
+
       final data = {
         'name': _nameCtrl.text.trim(),
         'brand': _brandCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
-        'packPrice': double.tryParse(_priceCtrl.text) ?? 0.0,
+        'packPrice': double.tryParse(
+              _priceCtrl.text.replaceAll('.', '').replaceAll(',', '').trim()
+            ) ?? 0.0,
         'unitsPerPack': int.tryParse(_unitsCtrl.text) ?? 0,
         'emoji': _emojiCtrl.text.trim(),
         'size': _selectedSize,
-        'stockStatus': _selectedStock,
+        'stockStatus': derivedStock,
+        'stockQuantity': stockQty,
         if (imageUrl != null) 'imageUrl': imageUrl,
       };
 
@@ -508,21 +583,28 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                 ),
                 const SizedBox(height: 14),
 
-                // Precio y unidades
+                // Precio y unidades por pack
                 Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _label('Precio del pack'),
+                          _label('Precio del pack (COP)'),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _priceCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(hintText: '9.99'),
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Requerido' : null,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                            decoration: const InputDecoration(
+                              hintText: 'Ej: 25000',
+                              prefixText: 'COP ',
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'Requerido';
+                              final clean = v.replaceAll('.', '').replaceAll(',', '').trim();
+                              if (double.tryParse(clean) == null) return 'Número inválido';
+                              return null;
+                            },
                           ),
                         ],
                       ),
@@ -532,7 +614,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _label('Unidades por pack'),
+                          _label('Uds. por pack'),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _unitsCtrl,
@@ -566,21 +648,41 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                 ),
                 const SizedBox(height: 14),
 
-                // Stock
-                _label('Estado de stock'),
+                // Stock (cantidad real en inventario)
+                _label('Cantidad en stock (unidades disponibles)'),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _selectedStock,
-                  decoration: const InputDecoration(),
-                  items: _stocks
-                      .map(
-                        (s) => DropdownMenuItem(
-                          value: s,
-                          child: Text(_stockLabels[s] ?? s),
+                TextFormField(
+                  controller: _stockQtyCtrl,
+                  keyboardType: TextInputType.number,
+                  onChanged: _onStockQtyChanged,
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    suffixIcon: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _stockColor(
+                                int.tryParse(_stockQtyCtrl.text) ?? 0)
+                            .withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _stockLabels[_selectedStock] ?? '',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _stockColor(
+                              int.tryParse(_stockQtyCtrl.text) ?? 0),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedStock = v!),
+                      ),
+                    ),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Requerido';
+                    if (int.tryParse(v) == null) return 'Número inválido';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
 
@@ -603,6 +705,12 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
         ),
       ),
     );
+  }
+
+  Color _stockColor(int qty) {
+    if (qty <= 0) return AppColors.error;
+    if (qty <= 10) return Colors.orange;
+    return AppColors.success;
   }
 
   Widget _imagePlaceholder() {
