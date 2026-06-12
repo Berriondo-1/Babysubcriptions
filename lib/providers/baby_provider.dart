@@ -1,5 +1,6 @@
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/services/database_service.dart';
+import 'package:baby_subscription/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 
 class BabyProvider extends ChangeNotifier {
@@ -32,7 +33,12 @@ class BabyProvider extends ChangeNotifier {
   Future<bool> saveProfile(BabyProfile profile, int userId) async {
     _setLoading(true);
     try {
+      // 1. Guardar en SQLite (local)
       final saved = await DatabaseService.instance.saveBabyProfile(profile, userId);
+
+      // 2. Sincronizar con Firestore (nube)
+      await FirestoreService.instance.saveBaby(saved);
+
       if (profile.id != null) {
         final idx = _profiles.indexWhere((p) => p.id == profile.id);
         if (idx >= 0) _profiles[idx] = saved;
@@ -54,11 +60,17 @@ class BabyProvider extends ChangeNotifier {
   Future<bool> deleteProfile(int profileId) async {
     _setLoading(true);
     try {
+      // 1. Eliminar en SQLite (local)
       await DatabaseService.instance.deleteBabyProfile(profileId);
+
+      // 2. Eliminar en Firestore (nube)
+      await FirestoreService.instance.deleteBaby(profileId);
+
       _profiles.removeWhere((p) => p.id == profileId);
       if (_selectedProfile?.id == profileId) {
         _selectedProfile = _profiles.isNotEmpty ? _profiles.first : null;
       }
+      _errorMessage = null;
       return true;
     } catch (e) {
       _errorMessage = 'Error eliminando perfil: $e';

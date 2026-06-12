@@ -69,36 +69,29 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithSocial(SocialProvider provider) async {
-    _setLoading(true);
-    final Map<SocialProvider, Map<String, String>> mockAccounts = {
-      SocialProvider.google: {'email': 'user@gmail.com', 'name': 'Usuario Google'},
-      SocialProvider.apple: {'email': 'user@icloud.com', 'name': 'Usuario Apple'},
-      SocialProvider.github: {'email': 'user@github.com', 'name': 'Usuario GitHub'},
-    };
-    try {
-      final mock = mockAccounts[provider]!;
-      final userProvider = provider == SocialProvider.google
-          ? AppAuthProvider.google
-          : provider == SocialProvider.apple
-              ? AppAuthProvider.apple
-              : AppAuthProvider.github;
-      _currentUser = await AuthService.instance.loginWithSocialProvider(
-        provider: userProvider,
-        email: mock['email']!,
-        displayName: mock['name'],
-      );
-      _status = AuthStatus.authenticated;
-      _errorMessage = null;
-      return true;
-    } on AuthException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } finally {
-      _setLoading(false);
+Future<bool> loginWithSocial(SocialProvider provider) async {
+  _setLoading(true);
+  try {
+    switch (provider) {
+      case SocialProvider.google:
+        _currentUser = await AuthService.instance.loginWithGoogle();
+        break;
+      case SocialProvider.github:
+        _currentUser = await AuthService.instance.loginWithGitHub(null);
+        break;
+      case SocialProvider.apple:
+        throw const AuthException('Apple Sign-In próximamente disponible.');
     }
+    _status = AuthStatus.authenticated;
+    _errorMessage = null;
+    return true;
+  } on AuthException catch (e) {
+    _errorMessage = e.message;
+    return false;
+  } finally {
+    _setLoading(false);
   }
-
+}
   Future<void> logout() async {
     await AuthService.instance.logout();
     _currentUser = null;

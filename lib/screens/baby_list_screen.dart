@@ -1,10 +1,15 @@
 import 'package:baby_subscription/models/baby_profile.dart';
 import 'package:baby_subscription/providers/auth_provider.dart';
 import 'package:baby_subscription/providers/baby_provider.dart';
+import 'package:baby_subscription/screens/admin_screen.dart';
 import 'package:baby_subscription/screens/baby_form_screen.dart';
 import 'package:baby_subscription/screens/catalog_screen.dart';
+import 'package:baby_subscription/providers/consumption_provider.dart';
+import 'package:baby_subscription/screens/consumption_screen.dart';
+import 'package:baby_subscription/screens/stock_screen.dart';
 import 'package:baby_subscription/screens/subscription_screen.dart';
 import 'package:baby_subscription/screens/welcome_screen.dart';
+import 'package:baby_subscription/services/admin_service.dart';
 import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:baby_subscription/providers/subscription_provider.dart';
 import 'package:flutter/material.dart';
@@ -43,9 +48,7 @@ class _BabyListScreenState extends State<BabyListScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(80, 38),
-            ),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 38)),
             child: const Text('Salir'),
           ),
         ],
@@ -88,6 +91,101 @@ class _BabyListScreenState extends State<BabyListScreen> {
     await context.read<BabyProvider>().deleteProfile(profile.id!);
   }
 
+  void _showAdminAccess() {
+    final codeCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.admin_panel_settings_outlined,
+                    color: AppColors.primary,
+                    size: 30,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  'Acceso administrador',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: codeCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  hintText: 'Código de acceso',
+                  prefixIcon: Icon(
+                    Icons.lock_outline_rounded,
+                    color: AppColors.textHint,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  if (AdminService.instance
+                      .validateAdminCode(codeCtrl.text.trim())) {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const AdminScreen()),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Código incorrecto.'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Entrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().currentUser;
@@ -107,7 +205,9 @@ class _BabyListScreenState extends State<BabyListScreen> {
                 gradient: AppColors.primaryGradient,
                 shape: BoxShape.circle,
               ),
-              child: const Center(child: Text('🍼', style: TextStyle(fontSize: 18))),
+              child: const Center(
+                child: Text('🍼', style: TextStyle(fontSize: 18)),
+              ),
             ),
             const SizedBox(width: 10),
             const Text('BabySubscription'),
@@ -123,7 +223,9 @@ class _BabyListScreenState extends State<BabyListScreen> {
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.person_outline_rounded),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             itemBuilder: (ctx) => [
               PopupMenuItem(
                 enabled: false,
@@ -143,10 +245,22 @@ class _BabyListScreenState extends State<BabyListScreen> {
                 ),
               ),
               const PopupMenuItem(
+                value: 'admin',
+                child: Row(
+                  children: [
+                    Icon(Icons.admin_panel_settings_outlined,
+                        color: AppColors.primary, size: 20),
+                    SizedBox(width: 10),
+                    Text('Acceso administrador'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+                    Icon(Icons.logout_rounded,
+                        color: AppColors.error, size: 20),
                     SizedBox(width: 10),
                     Text('Cerrar sesión'),
                   ],
@@ -155,13 +269,16 @@ class _BabyListScreenState extends State<BabyListScreen> {
             ],
             onSelected: (value) {
               if (value == 'logout') _logout();
+              if (value == 'admin') _showAdminAccess();
             },
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: babyProv.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
@@ -205,14 +322,14 @@ class _BabyListScreenState extends State<BabyListScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
-                                child: Text('👶', style: TextStyle(fontSize: 48)),
+                                child: Text('👶',
+                                    style: TextStyle(fontSize: 48)),
                               ),
                             ),
                             const SizedBox(height: 20),
-                            Text(
-                              'Sin perfiles aún',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
+                            Text('Sin perfiles aún',
+                                style:
+                                    Theme.of(context).textTheme.titleLarge),
                             const SizedBox(height: 8),
                             Text(
                               'Toca el botón + para registrar\nel perfil de tu bebé',
@@ -237,13 +354,37 @@ class _BabyListScreenState extends State<BabyListScreen> {
                               MaterialPageRoute(
                                 builder: (_) => ChangeNotifierProvider(
                                   create: (_) => SubscriptionProvider(),
-                                  child: SubscriptionScreen(babyProfile: profiles[i]),
+                                  child: SubscriptionScreen(
+                                    babyProfile: profiles[i],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            onConsumption: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider(
+                                  create: (_) => ConsumptionProvider(),
+                                  child: ConsumptionScreen(
+                                    babyProfile: profiles[i],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            onStock: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider(
+                                  create: (_) => SubscriptionProvider(),
+                                  child: StockScreen(
+                                    babyProfile: profiles[i],
+                                  ),
                                 ),
                               ),
                             ),
                             onEdit: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => BabyFormScreen(existingProfile: profiles[i]),
+                                builder: (_) => BabyFormScreen(
+                                  existingProfile: profiles[i],
+                                ),
                               ),
                             ),
                             onDelete: () => _deleteProfile(profiles[i]),
@@ -271,17 +412,23 @@ class _BabyListScreenState extends State<BabyListScreen> {
   }
 }
 
+// ─── Baby profile card ────────────────────────────────────────────────────────
+
 class _BabyProfileCard extends StatelessWidget {
   final BabyProfile profile;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSubscription;
+  final VoidCallback onConsumption;
+  final VoidCallback onStock; // ← nuevo
 
   const _BabyProfileCard({
     required this.profile,
     required this.onEdit,
     required this.onDelete,
     required this.onSubscription,
+    required this.onConsumption,
+    required this.onStock, // ← nuevo
   });
 
   @override
@@ -305,7 +452,6 @@ class _BabyProfileCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            // Avatar
             Container(
               width: 56,
               height: 56,
@@ -315,7 +461,9 @@ class _BabyProfileCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                  profile.name.isNotEmpty
+                      ? profile.name[0].toUpperCase()
+                      : '?',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -325,21 +473,15 @@ class _BabyProfileCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    profile.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text(profile.name,
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
-                  Text(
-                    profile.ageLabel,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(profile.ageLabel,
+                      style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -358,8 +500,6 @@ class _BabyProfileCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Actions
             Column(
               children: [
                 IconButton(
@@ -367,6 +507,18 @@ class _BabyProfileCard extends StatelessWidget {
                   icon: const Icon(Icons.subscriptions_outlined, size: 20),
                   color: AppColors.primary,
                   tooltip: 'Suscripción',
+                ),
+                IconButton(
+                  onPressed: onConsumption,
+                  icon: const Icon(Icons.bar_chart_rounded, size: 20),
+                  color: AppColors.primary,
+                  tooltip: 'Consumo',
+                ),
+                IconButton(
+                  onPressed: onStock, // ← nuevo
+                  icon: const Icon(Icons.inventory_2_outlined, size: 20),
+                  color: AppColors.primary,
+                  tooltip: 'Stock',
                 ),
                 IconButton(
                   onPressed: onEdit,
@@ -388,6 +540,8 @@ class _BabyProfileCard extends StatelessWidget {
     );
   }
 }
+
+// ─── Info chip ────────────────────────────────────────────────────────────────
 
 class _InfoChip extends StatelessWidget {
   final IconData icon;
@@ -422,7 +576,9 @@ class _InfoChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: highlighted ? AppColors.primary : AppColors.textSecondary,
+              color: highlighted
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
             ),
           ),
         ],

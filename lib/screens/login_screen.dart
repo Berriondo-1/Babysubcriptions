@@ -6,6 +6,8 @@ import 'package:baby_subscription/theme/app_theme.dart';
 import 'package:baby_subscription/widgets/social_login_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:baby_subscription/screens/admin_screen.dart';
+import 'package:baby_subscription/services/admin_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +17,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _adminCodeController = TextEditingController();
+  bool _showAdminField = false;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -22,11 +26,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _adminCodeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-
+  void _tryAdminAccess() {
+  final code = _adminCodeController.text.trim();
+  if (AdminService.instance.validateAdminCode(code)) {
+    _adminCodeController.clear();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AdminScreen()),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Código de administrador incorrecto.'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final authProv = context.read<AuthProvider>();
@@ -68,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leading: BackButton(color: AppColors.textPrimary),
+        leading: const BackButton(),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -90,6 +112,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Center(child: Text('🍼', style: TextStyle(fontSize: 30))),
                   ),
                 ),
+                // Acceso admin discreto
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => setState(() => _showAdminField = !_showAdminField),
+                child: Center(
+                  child: Text(
+                    '···',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: AppColors.textHint,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+              ),
+              if (_showAdminField) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _adminCodeController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Código de acceso',
+                    prefixIcon: const Icon(Icons.admin_panel_settings_outlined,
+                        color: AppColors.textHint),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.arrow_forward_rounded,
+                          color: AppColors.primary),
+                      onPressed: _tryAdminAccess,
+                    ),
+                  ),
+                  onFieldSubmitted: (_) => _tryAdminAccess(),
+                ),
+              ],
                 const SizedBox(height: 20),
                 Center(
                   child: Text(
